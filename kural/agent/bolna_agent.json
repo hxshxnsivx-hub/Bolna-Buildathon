@@ -1,0 +1,82 @@
+{
+  "_comment": "Illustrative Bolna agent config for Kural. Field names mirror Bolna's documented shape; VERIFY against the live Bolna Agent Studio / API (docs.bolna.ai) before importing. The key piece is the custom tool 'file_grievance' pointing at your deployed /grievance webhook.",
+  "agent_config": {
+    "agent_name": "Kural",
+    "agent_type": "other",
+    "tasks": [
+      {
+        "task_type": "conversation",
+        "tools_config": {
+          "input": { "provider": "plivo", "format": "wav" },
+          "output": { "provider": "plivo", "format": "wav" },
+          "transcriber": {
+            "provider": "sarvam",
+            "model": "saaras:v3",
+            "language": "ta",
+            "stream": true,
+            "_note": "auto language-detect; telephony-tuned; code-mixed Tanglish"
+          },
+          "synthesizer": {
+            "provider": "cartesia",
+            "model": "sonic",
+            "language": "ta",
+            "stream": true,
+            "_fallback": { "provider": "sarvam", "model": "bulbul:v3", "language": "ta" }
+          },
+          "llm_agent": {
+            "provider": "openai",
+            "model": "gpt-4o",
+            "temperature": 0.2,
+            "_why": "reliable function-calling for file_grievance"
+          }
+        },
+        "task_config": {
+          "hangup_after_silence": 8,
+          "interruption_enabled": true
+        }
+      }
+    ],
+    "system_prompt_file": "agent/system_prompt.md",
+    "tools": [
+      {
+        "name": "file_grievance",
+        "description": "File a confirmed civic grievance and get a ticket number + owning body.",
+        "webhook": {
+          "url": "https://<YOUR_DEPLOY_URL>/grievance",
+          "method": "POST"
+        },
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "call_id": { "type": "string" },
+            "utterance": { "type": "string" },
+            "caller": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "phone": { "type": "string" },
+                "raw_address": { "type": "string" }
+              }
+            },
+            "extracted": {
+              "type": "object",
+              "properties": {
+                "sector": { "type": "string" },
+                "severity": { "type": "string", "enum": ["low", "medium", "high"] },
+                "locality": {
+                  "type": "object",
+                  "properties": {
+                    "text": { "type": "string" },
+                    "region": { "type": "string", "enum": ["chennai", "urban", "rural"] }
+                  }
+                }
+              },
+              "required": ["sector"]
+            }
+          }
+        }
+      }
+    ],
+    "post_call_webhook": "https://<YOUR_DEPLOY_URL>/call-webhook"
+  }
+}

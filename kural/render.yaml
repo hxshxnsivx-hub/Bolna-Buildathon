@@ -1,0 +1,25 @@
+# Render blueprint for the Kural brain (serves API + dashboard + webhooks).
+# In the Render dashboard set the service "Root Directory" to `kural` (this folder),
+# since the repo root is the parent. Then add the secret env values (sync:false ones).
+services:
+  - type: web
+    name: kural-brain
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: PLIVO_AUTH_ID
+        sync: false
+      - key: PLIVO_AUTH_TOKEN
+        sync: false
+      - key: PLIVO_SRC_NUMBER
+        sync: false
