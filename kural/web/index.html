@@ -232,6 +232,7 @@ async function load(){
           <span class="font-medium text-white capitalize">${esc((t.sector||'').replace(/_/g,' '))}</span>
           ${badge(t.severity||'', SEV[t.severity]||SEV.low)}
           ${hot?`<span title="hotspot">🔥</span><span class="text-[11px] text-saffron">${rc(t)}× reporters</span>`:''}
+          ${t.anomaly?`<span class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ring-1 bg-rose-500/15 text-rose-300 ring-rose-500/30">⚡ ₹${Math.round(t.amount_over||0)} over-charge</span>`:''}
         </div>
         <div class="font-tamil text-xs text-slate-400 mt-0.5 max-w-[22rem] truncate">${esc(t.locality||'')}</div>
       </td>

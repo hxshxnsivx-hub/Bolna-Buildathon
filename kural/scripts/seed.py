@@ -40,6 +40,17 @@ def main():
                if g.duplicate_of else "")
         print(f"  {g.ticket_id}: {sector} -> {g.owning_body} {tag}")
 
+    # electricity bill over-charge (Coimbatore) — demonstrates billing anomaly + city routing
+    gb = file_grievance(
+        Extracted(sector="electricity", severity="high",
+                  locality=Locality(text="Kuniyamuthur 12th Street, Coimbatore", region="urban")),
+        Caller(name="Senthil", phone="+919000000007",
+               raw_address="Kuniyamuthur 12th Street, Coimbatore"),
+        utterance="200 units use பண்ணேன், aana bill ₹2000 vandhuchu",
+        billing={"units_used": 200, "amount_charged": 2000})
+    print(f"  {gb.ticket_id}: electricity bill -> {gb.owning_body} "
+          f"| over ₹{gb.amount_over} anomaly={gb.anomaly}")
+
     conn = db.get_conn()
     try:
         eval_demos = [

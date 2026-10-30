@@ -24,11 +24,18 @@ class Extracted(BaseModel):
     language_mix: List[str] = Field(default_factory=lambda: ["ta", "en"])
 
 
+class Billing(BaseModel):
+    units_used: Optional[float] = None
+    amount_charged: Optional[float] = None
+    expected_amount: Optional[float] = None   # caller's "normal" bill; else estimated
+
+
 class GrievanceIn(BaseModel):
     call_id: Optional[str] = None
     caller: Caller = Field(default_factory=Caller)
     utterance: Optional[str] = None
     extracted: Extracted = Field(default_factory=Extracted)
+    billing: Optional[Billing] = None
 
 
 class GrievanceOut(BaseModel):
@@ -45,6 +52,13 @@ class GrievanceOut(BaseModel):
     duplicate_of: Optional[str] = None
     cluster_size: int = 1
     spoken_confirmation: str = ""    # Tanglish line the agent can read back
+    # billing-dispute breakdown (electricity over-charge), when provided
+    units_used: Optional[float] = None
+    amount_charged: Optional[float] = None
+    expected_amount: Optional[float] = None
+    amount_over: Optional[float] = None
+    pct_over: Optional[float] = None
+    anomaly: bool = False
 
 
 class ClassifyIn(BaseModel):

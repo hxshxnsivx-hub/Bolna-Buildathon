@@ -39,6 +39,11 @@ CREATE TABLE IF NOT EXISTS tickets (
     cluster_key   TEXT,
     reporter_count INTEGER DEFAULT 1,
     dispatched    INTEGER DEFAULT 0,
+    units_used     REAL,
+    amount_charged REAL,
+    expected_amount REAL,
+    amount_over    REAL,
+    anomaly        INTEGER DEFAULT 0,
     sms_sent      INTEGER DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS reporters (
@@ -84,6 +89,11 @@ def init_db():
         # lightweight migrations for pre-existing DBs
         for tbl, col, ddl in (("tickets", "reporter_count", "INTEGER DEFAULT 1"),
                               ("tickets", "dispatched", "INTEGER DEFAULT 0"),
+                              ("tickets", "units_used", "REAL"),
+                              ("tickets", "amount_charged", "REAL"),
+                              ("tickets", "expected_amount", "REAL"),
+                              ("tickets", "amount_over", "REAL"),
+                              ("tickets", "anomaly", "INTEGER DEFAULT 0"),
                               ("eval_scores", "lang_match_ok", "INTEGER DEFAULT 1"),
                               ("eval_scores", "tamil_ratio", "INTEGER DEFAULT 0"),
                               ("eval_scores", "romanized_tamil", "INTEGER DEFAULT 0")):
@@ -118,7 +128,8 @@ def insert_ticket(conn, t: dict):
     cols = ("id", "call_id", "sector", "owning_body", "department", "field_cadre",
             "channel", "zone", "region", "locality", "severity", "summary", "status",
             "sla_days", "created_at", "due_at", "cluster_key", "reporter_count",
-            "dispatched", "sms_sent")
+            "dispatched", "units_used", "amount_charged", "expected_amount",
+            "amount_over", "anomaly", "sms_sent")
     conn.execute(
         f"INSERT INTO tickets ({','.join(cols)}) VALUES ({','.join('?' * len(cols))})",
         tuple(t.get(c) for c in cols))

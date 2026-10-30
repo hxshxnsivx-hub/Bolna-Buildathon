@@ -1,5 +1,5 @@
 {
-  "_comment": "Bolna agent config for Kural. The tool uses Bolna's custom_task format and calls the live brain's FLAT endpoint /file with templated %(name)s params. Set this up in Bolna Agent Studio (see docs/architecture/04-bolna-wiring.md). Verify exact field names against docs.bolna.ai before importing.",
+  "_comment": "Bolna agent config for Kural. Three custom_task tools call the live brain. Set up in Bolna Agent Studio (see docs/architecture/04-bolna-wiring.md). Verify exact field names against docs.bolna.ai before importing.",
   "agent_name": "Kural",
   "transcriber": { "provider": "sarvam", "model": "saaras:v3", "language": "ta", "stream": true },
   "synthesizer": {
@@ -12,32 +12,71 @@
   "tools": [
     {
       "name": "file_grievance",
-      "description": "Call this AFTER the caller confirms their complaint. Files the civic grievance and returns a ticket number + the owning government body. Use for any civic problem: water, power/electricity, garbage, road/pothole, streetlight, drainage, sewage, stray animals, etc.",
+      "description": "Call AFTER the caller confirms. Files the civic grievance and returns a ticket number + owning body. For ELECTRICITY BILL disputes also pass units_used, amount_charged, and (if the caller knows it) expected_amount — the brain computes the over-charge.",
       "pre_call_message": "Ticket podappren, oru nimisham...",
       "parameters": {
         "type": "object",
         "properties": {
-          "sector": { "type": "string", "description": "one of: electricity, water_supply, sewerage, roads_internal, roads_highway, stormwater, streetlight, solid_waste, sanitation_toilet, public_health, stray_animals, town_planning, property_tax, other" },
-          "locality": { "type": "string", "description": "the area / street / landmark the caller mentioned" },
+          "sector": { "type": "string", "description": "electricity, water_supply, sewerage, roads_internal, roads_highway, stormwater, streetlight, solid_waste, sanitation_toilet, public_health, stray_animals, town_planning, property_tax, other" },
+          "locality": { "type": "string", "description": "area / street / city the caller said (e.g., 'Kuniyamuthur 12th Street Coimbatore')" },
           "region": { "type": "string", "description": "chennai | urban | rural" },
           "severity": { "type": "string", "description": "low | medium | high" },
-          "name": { "type": "string", "description": "caller name if given" },
-          "phone": { "type": "string", "description": "caller phone if given" },
-          "utterance": { "type": "string", "description": "the caller's own words" }
+          "name": { "type": "string" },
+          "phone": { "type": "string" },
+          "utterance": { "type": "string", "description": "the caller's own words" },
+          "units_used": { "type": "number", "description": "electricity units consumed (bill disputes only)" },
+          "amount_charged": { "type": "number", "description": "amount the bill charged (bill disputes only)" },
+          "expected_amount": { "type": "number", "description": "the caller's normal/expected bill, if they know it" }
         },
         "required": ["sector", "locality"]
       },
       "key": "custom_task",
       "value": {
         "method": "GET",
-        "url": "https://kural-brain.onrender.com/file?sector=%(sector)s&locality=%(locality)s&region=%(region)s&severity=%(severity)s&name=%(name)s&phone=%(phone)s&utterance=%(utterance)s",
+        "url": "https://kural-brain.onrender.com/file?sector=%(sector)s&locality=%(locality)s&region=%(region)s&severity=%(severity)s&name=%(name)s&phone=%(phone)s&utterance=%(utterance)s&units=%(units_used)s&charged=%(amount_charged)s&expected=%(expected_amount)s",
         "headers": { "Content-Type": "application/json" }
       },
       "param": {
         "sector": "%(sector)s", "locality": "%(locality)s", "region": "%(region)s",
         "severity": "%(severity)s", "name": "%(name)s", "phone": "%(phone)s",
-        "utterance": "%(utterance)s"
+        "utterance": "%(utterance)s", "units_used": "%(units_used)s",
+        "amount_charged": "%(amount_charged)s", "expected_amount": "%(expected_amount)s"
       }
+    },
+    {
+      "name": "check_area_status",
+      "description": "Call when the caller asks whether an issue is already reported, or to check if their problem is common in the area. Returns how many people already reported the same issue+area.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "locality": { "type": "string" },
+          "sector": { "type": "string" }
+        },
+        "required": ["locality", "sector"]
+      },
+      "key": "custom_task",
+      "value": {
+        "method": "GET",
+        "url": "https://kural-brain.onrender.com/area-status?locality=%(locality)s&sector=%(sector)s",
+        "headers": { "Content-Type": "application/json" }
+      },
+      "param": { "locality": "%(locality)s", "sector": "%(sector)s" }
+    },
+    {
+      "name": "get_ticket_status",
+      "description": "Call when a returning caller gives their ticket number (e.g., KRL-2026-00042) and wants its status.",
+      "parameters": {
+        "type": "object",
+        "properties": { "ticket_id": { "type": "string" } },
+        "required": ["ticket_id"]
+      },
+      "key": "custom_task",
+      "value": {
+        "method": "GET",
+        "url": "https://kural-brain.onrender.com/ticket-status/%(ticket_id)s",
+        "headers": { "Content-Type": "application/json" }
+      },
+      "param": { "ticket_id": "%(ticket_id)s" }
     }
   ],
   "post_call_webhook": "https://kural-brain.onrender.com/call-webhook"

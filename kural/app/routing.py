@@ -39,10 +39,41 @@ class Routing:
     channel: str
     sla_days: int
     region: str = ""
+    city: str = ""
     note: str = ""
 
     def as_dict(self):
         return asdict(self)
+
+
+# Major TN cities -> (corporation name, is_chennai). Used to route ULB-owned issues to the
+# right city body and to infer the region. Electricity stays TNPDCL statewide but records the city.
+CITY_CORP = {
+    "chennai": ("Greater Chennai Corporation", True),
+    "coimbatore": ("Coimbatore City Municipal Corporation", False),
+    "kuniyamuthur": ("Coimbatore City Municipal Corporation", False),   # Coimbatore locality
+    "madurai": ("Madurai Municipal Corporation", False),
+    "trichy": ("Tiruchirappalli City Municipal Corporation", False),
+    "tiruchirappalli": ("Tiruchirappalli City Municipal Corporation", False),
+    "salem": ("Salem City Municipal Corporation", False),
+    "tirunelveli": ("Tirunelveli City Municipal Corporation", False),
+    "erode": ("Erode City Municipal Corporation", False),
+    "vellore": ("Vellore City Municipal Corporation", False),
+    "thoothukudi": ("Thoothukudi City Municipal Corporation", False),
+    "tuticorin": ("Thoothukudi City Municipal Corporation", False),
+    "tiruppur": ("Tiruppur City Municipal Corporation", False),
+    "thanjavur": ("Thanjavur Municipal Corporation", False),
+    "dindigul": ("Dindigul Municipal Corporation", False),
+}
+
+
+def resolve_city(text):
+    """Find a known TN city/locality in free text -> (city_key, corporation, is_chennai)."""
+    t = (text or "").lower()
+    for city, (corp, is_chennai) in CITY_CORP.items():
+        if city in t:
+            return city, corp, is_chennai
+    return None, None, None
 
 
 def _r(owning_body, department, field_cadre, channel, sla_days, note=""):
@@ -151,9 +182,15 @@ def guess_region(locality_text: Optional[str]) -> str:
 
 def resolve(sector: str, region: Optional[str] = None,
             locality_text: Optional[str] = None) -> Routing:
-    """(sector x region) -> the owning body that must act. Never raises."""
+    """(sector x region) -> the owning body that must act, specialised to the city. Never raises."""
     sector = (sector or "other").strip().lower()
-    region = (region or guess_region(locality_text)).strip().lower()
+    city, corp, is_chennai = resolve_city(locality_text)
+    if region:
+        region = region.strip().lower()
+    elif city:
+        region = REGION_CHENNAI if is_chennai else REGION_URBAN
+    else:
+        region = guess_region(locality_text)
     if region not in REGIONS:
         region = guess_region(locality_text)
 
@@ -162,4 +199,8 @@ def resolve(sector: str, region: Optional[str] = None,
         part = _FALLBACK
     else:
         part = entry.get(region) or entry.get("*") or next(iter(entry.values()))
-    return Routing(sector=sector, region=region, **part)
+    r = Routing(sector=sector, region=region, city=(city or ""), **part)
+    # specialise a generic ULB/GCC owner to the actual city corporation when we know the city
+    if corp and r.owning_body in ("Urban Local Body", "Greater Chennai Corporation"):
+        r.owning_body = corp
+    return r

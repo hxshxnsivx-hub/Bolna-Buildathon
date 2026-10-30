@@ -20,7 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import db, sla, nlu
 from .eval import run_eval
-from .service import file_grievance
+from .routing import resolve
+from .service import file_grievance, cluster_key
 from .models import (GrievanceIn, GrievanceOut, ClassifyIn, CallWebhookIn,
                      Extracted, Caller, Locality)
 
@@ -50,8 +51,9 @@ def health():
 @app.post("/grievance", response_model=GrievanceOut)
 def grievance(payload: GrievanceIn):
     """Called by the Bolna voice agent (tool/custom-function) after the caller confirms."""
+    billing = payload.billing.model_dump() if payload.billing else None
     return file_grievance(payload.extracted, payload.caller,
-                          payload.call_id, payload.utterance)
+                          payload.call_id, payload.utterance, billing=billing)
 
 
 @app.post("/intake", response_model=GrievanceOut)
@@ -67,13 +69,57 @@ def intake(payload: ClassifyIn):
 @app.api_route("/file", methods=["GET", "POST"])
 def file_flat(sector: str = "other", locality: str = "", region: str = "",
               severity: str = "medium", name: str = "", phone: str = "",
-              call_id: str = "", utterance: str = ""):
-    """Flat-params entry for Bolna's custom_task tool (which templates %(name)s into a URL).
-    Maps simple query params -> the structured file_grievance contract."""
+              call_id: str = "", utterance: str = "",
+              units: float | None = None, charged: float | None = None,
+              expected: float | None = None):
+    """Flat-params entry for Bolna's custom_task tool (templates %(name)s into a URL).
+    For electricity bill disputes pass units/charged/(expected) -> the brain computes the
+    over-charge + anomaly. Maps simple query params -> file_grievance."""
     extracted = Extracted(sector=sector or "other", severity=severity or "medium",
                           locality=Locality(text=locality or None, region=region or None))
     caller = Caller(name=name or None, phone=phone or None, raw_address=locality or None)
-    return file_grievance(extracted, caller, call_id or None, utterance or locality or None)
+    billing = None
+    if units is not None or charged is not None:
+        billing = {"units_used": units, "amount_charged": charged, "expected_amount": expected}
+    return file_grievance(extracted, caller, call_id or None,
+                          utterance or locality or None, billing=billing)
+
+
+@app.get("/area-status")
+def area_status(locality: str = "", sector: str = "other"):
+    """Agent tool: how many open reports already exist for this issue+area (dedup/hotspot).
+    Lets the agent say 'already N reported — you're the next, idhu priority-ku pogum'."""
+    r = resolve(sector, locality_text=locality)
+    ck = cluster_key(r.owning_body, r.region, r.sector, locality)
+    conn = db.get_conn()
+    try:
+        row = db.open_duplicate_ticket(conn, ck)
+        count = row.get("reporter_count", 0) if row else 0
+        return {"locality": locality, "sector": r.sector, "owning_body": r.owning_body,
+                "existing_reports": count, "hotspot": count >= 3,
+                "ticket_id": row["id"] if row else None}
+    finally:
+        conn.close()
+
+
+@app.get("/ticket-status/{ticket_id}")
+def ticket_status(ticket_id: str):
+    """Agent tool: a returning caller gives their ticket number and hears the status."""
+    conn = db.get_conn()
+    try:
+        t = db.get_ticket(conn, ticket_id)
+        if not t:
+            return {"found": False,
+                    "spoken": f"Ticket {ticket_id} kedaikala. Number sariya sollunga."}
+        breached = t["status"] == "open" and t["due_at"] < db.now_iso()
+        spoken = (f"Ticket {ticket_id}: {t['owning_body']}-la status '{t['status']}'. "
+                  + ("SLA over aayiduchu, escalate aagudhu." if breached
+                     else "SLA kulla iruku, work nadakudhu."))
+        return {"found": True, "ticket_id": ticket_id, "status": t["status"],
+                "owning_body": t["owning_body"], "due_at": t["due_at"],
+                "breached": breached, "spoken": spoken}
+    finally:
+        conn.close()
 
 
 @app.get("/ticket/{ticket_id}")
@@ -91,7 +137,7 @@ def get_ticket(ticket_id: str):
 
 
 @app.post("/ticket/{ticket_id}/resolve")
-def resolve(ticket_id: str):
+def resolve_ticket_route(ticket_id: str):
     conn = db.get_conn()
     try:
         ok = db.resolve_ticket(conn, ticket_id)

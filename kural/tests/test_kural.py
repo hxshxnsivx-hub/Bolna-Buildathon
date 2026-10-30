@@ -14,7 +14,7 @@ if _dbfile.exists():
     _dbfile.unlink()
 
 from fastapi.testclient import TestClient          # noqa: E402
-from app import db, sla                            # noqa: E402
+from app import db, sla, billing                   # noqa: E402
 from app.routing import resolve                    # noqa: E402
 from app.main import app                           # noqa: E402
 
@@ -96,6 +96,38 @@ def test_flat_file_endpoint():
                                      "name": "T", "phone": "+91"}).json()
     assert d["owning_body"] == "CMWSSB (Chennai Metro Water)"
     assert d["ticket_id"].startswith("KRL-") and d["spoken_confirmation"]
+
+
+# ---------- billing + city + autonomy tools ----------
+def test_billing_anomaly_and_normal():
+    b = billing.analyze(units=200, amount_charged=2000)      # expected ~235
+    assert b["anomaly"] is True and b["amount_over"] > 1000
+    assert billing.analyze(units=200, amount_charged=235)["anomaly"] is False
+
+
+def test_city_routing_coimbatore():
+    r = resolve("solid_waste", locality_text="Kuniyamuthur 12th Street Coimbatore")
+    assert r.city == "coimbatore" and "Coimbatore" in r.owning_body and r.region == "urban"
+    r2 = resolve("electricity", locality_text="Coimbatore")
+    assert "TNPDCL" in r2.owning_body and r2.city == "coimbatore"
+
+
+def test_file_with_billing_overcharge():
+    d = client.get("/file", params={"sector": "electricity", "locality": "RS Puram Coimbatore",
+                                     "region": "urban", "severity": "high",
+                                     "units": 200, "charged": 2000}).json()
+    assert d["anomaly"] is True and d["amount_over"] > 0 and "TNPDCL" in d["owning_body"]
+
+
+def test_area_and_ticket_status():
+    g = client.get("/file", params={"sector": "water_supply", "locality": "KK Nagar Madurai spot",
+                                     "region": "urban", "severity": "high", "phone": "+91777"}).json()
+    a = client.get("/area-status", params={"locality": "KK Nagar Madurai spot",
+                                            "sector": "water_supply"}).json()
+    assert a["existing_reports"] >= 1
+    s = client.get(f"/ticket-status/{g['ticket_id']}").json()
+    assert s["found"] is True and s["ticket_id"] == g["ticket_id"]
+    assert client.get("/ticket-status/NOPE").json()["found"] is False
 
 
 def test_eval_webhook_scores():
