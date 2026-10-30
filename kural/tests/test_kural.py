@@ -89,6 +89,15 @@ def test_escalations_is_list():
     assert isinstance(client.get("/api/escalations").json(), list)
 
 
+def test_flat_file_endpoint():
+    # Bolna's custom_task calls /file with flat query params
+    d = client.get("/file", params={"sector": "water_supply", "locality": "Besant Nagar Chennai",
+                                     "region": "chennai", "severity": "high",
+                                     "name": "T", "phone": "+91"}).json()
+    assert d["owning_body"] == "CMWSSB (Chennai Metro Water)"
+    assert d["ticket_id"].startswith("KRL-") and d["spoken_confirmation"]
+
+
 def test_eval_webhook_scores():
     e = client.post("/call-webhook", json={
         "call_id": "t1", "latency_ms": 650,

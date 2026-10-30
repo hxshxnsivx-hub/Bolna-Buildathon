@@ -1,82 +1,44 @@
 {
-  "_comment": "Illustrative Bolna agent config for Kural. Field names mirror Bolna's documented shape; VERIFY against the live Bolna Agent Studio / API (docs.bolna.ai) before importing. The key piece is the custom tool 'file_grievance' pointing at your deployed /grievance webhook.",
-  "agent_config": {
-    "agent_name": "Kural",
-    "agent_type": "other",
-    "tasks": [
-      {
-        "task_type": "conversation",
-        "tools_config": {
-          "input": { "provider": "plivo", "format": "wav" },
-          "output": { "provider": "plivo", "format": "wav" },
-          "transcriber": {
-            "provider": "sarvam",
-            "model": "saaras:v3",
-            "language": "ta",
-            "stream": true,
-            "_note": "auto language-detect; telephony-tuned; code-mixed Tanglish"
-          },
-          "synthesizer": {
-            "provider": "cartesia",
-            "model": "sonic",
-            "language": "ta",
-            "stream": true,
-            "_fallback": { "provider": "sarvam", "model": "bulbul:v3", "language": "ta" }
-          },
-          "llm_agent": {
-            "provider": "openai",
-            "model": "gpt-4o",
-            "temperature": 0.2,
-            "_why": "reliable function-calling for file_grievance"
-          }
+  "_comment": "Bolna agent config for Kural. The tool uses Bolna's custom_task format and calls the live brain's FLAT endpoint /file with templated %(name)s params. Set this up in Bolna Agent Studio (see docs/architecture/04-bolna-wiring.md). Verify exact field names against docs.bolna.ai before importing.",
+  "agent_name": "Kural",
+  "transcriber": { "provider": "sarvam", "model": "saaras:v3", "language": "ta", "stream": true },
+  "synthesizer": {
+    "provider": "cartesia", "model": "sonic", "language": "ta", "stream": true,
+    "_fallback": { "provider": "sarvam", "model": "bulbul:v3", "language": "ta" }
+  },
+  "llm": { "provider": "openai", "model": "gpt-4o", "temperature": 0.2,
+           "_note": "any function-calling LLM works (Gemini / Groq / GPT)" },
+  "system_prompt_file": "agent/system_prompt.md",
+  "tools": [
+    {
+      "name": "file_grievance",
+      "description": "Call this AFTER the caller confirms their complaint. Files the civic grievance and returns a ticket number + the owning government body. Use for any civic problem: water, power/electricity, garbage, road/pothole, streetlight, drainage, sewage, stray animals, etc.",
+      "pre_call_message": "Ticket podappren, oru nimisham...",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sector": { "type": "string", "description": "one of: electricity, water_supply, sewerage, roads_internal, roads_highway, stormwater, streetlight, solid_waste, sanitation_toilet, public_health, stray_animals, town_planning, property_tax, other" },
+          "locality": { "type": "string", "description": "the area / street / landmark the caller mentioned" },
+          "region": { "type": "string", "description": "chennai | urban | rural" },
+          "severity": { "type": "string", "description": "low | medium | high" },
+          "name": { "type": "string", "description": "caller name if given" },
+          "phone": { "type": "string", "description": "caller phone if given" },
+          "utterance": { "type": "string", "description": "the caller's own words" }
         },
-        "task_config": {
-          "hangup_after_silence": 8,
-          "interruption_enabled": true
-        }
+        "required": ["sector", "locality"]
+      },
+      "key": "custom_task",
+      "value": {
+        "method": "GET",
+        "url": "https://kural-brain.onrender.com/file?sector=%(sector)s&locality=%(locality)s&region=%(region)s&severity=%(severity)s&name=%(name)s&phone=%(phone)s&utterance=%(utterance)s",
+        "headers": { "Content-Type": "application/json" }
+      },
+      "param": {
+        "sector": "%(sector)s", "locality": "%(locality)s", "region": "%(region)s",
+        "severity": "%(severity)s", "name": "%(name)s", "phone": "%(phone)s",
+        "utterance": "%(utterance)s"
       }
-    ],
-    "system_prompt_file": "agent/system_prompt.md",
-    "tools": [
-      {
-        "name": "file_grievance",
-        "description": "File a confirmed civic grievance and get a ticket number + owning body.",
-        "webhook": {
-          "url": "https://<YOUR_DEPLOY_URL>/grievance",
-          "method": "POST"
-        },
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "call_id": { "type": "string" },
-            "utterance": { "type": "string" },
-            "caller": {
-              "type": "object",
-              "properties": {
-                "name": { "type": "string" },
-                "phone": { "type": "string" },
-                "raw_address": { "type": "string" }
-              }
-            },
-            "extracted": {
-              "type": "object",
-              "properties": {
-                "sector": { "type": "string" },
-                "severity": { "type": "string", "enum": ["low", "medium", "high"] },
-                "locality": {
-                  "type": "object",
-                  "properties": {
-                    "text": { "type": "string" },
-                    "region": { "type": "string", "enum": ["chennai", "urban", "rural"] }
-                  }
-                }
-              },
-              "required": ["sector"]
-            }
-          }
-        }
-      }
-    ],
-    "post_call_webhook": "https://<YOUR_DEPLOY_URL>/call-webhook"
-  }
+    }
+  ],
+  "post_call_webhook": "https://kural-brain.onrender.com/call-webhook"
 }

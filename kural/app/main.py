@@ -64,6 +64,18 @@ def intake(payload: ClassifyIn):
     return file_grievance(extracted, payload.caller, None, payload.utterance)
 
 
+@app.api_route("/file", methods=["GET", "POST"])
+def file_flat(sector: str = "other", locality: str = "", region: str = "",
+              severity: str = "medium", name: str = "", phone: str = "",
+              call_id: str = "", utterance: str = ""):
+    """Flat-params entry for Bolna's custom_task tool (which templates %(name)s into a URL).
+    Maps simple query params -> the structured file_grievance contract."""
+    extracted = Extracted(sector=sector or "other", severity=severity or "medium",
+                          locality=Locality(text=locality or None, region=region or None))
+    caller = Caller(name=name or None, phone=phone or None, raw_address=locality or None)
+    return file_grievance(extracted, caller, call_id or None, utterance or locality or None)
+
+
 @app.get("/ticket/{ticket_id}")
 def get_ticket(ticket_id: str):
     conn = db.get_conn()
