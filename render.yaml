@@ -1,11 +1,12 @@
-# Render blueprint for the Kural brain (serves API + dashboard + webhooks).
-# In the Render dashboard set the service "Root Directory" to `kural` (this folder),
-# since the repo root is the parent. Then add the secret env values (sync:false ones).
+# Render Blueprint — deploys the Kural brain (FastAPI API + dashboard + webhooks).
+# On Render: New -> Blueprint -> connect this repo -> Apply. Then fill the secret
+# env values (the sync:false ones). The app code lives in kural/ (rootDir below).
 services:
   - type: web
     name: kural-brain
     runtime: python
     plan: free
+    rootDir: kural
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
     envVars:
