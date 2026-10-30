@@ -1,32 +1,40 @@
 """Deterministic owning-body resolver — the heart of Kural.
 
-Given a civic-grievance SECTOR and the caller's REGION, return the single
-government body + department + field cadre + official channel + SLA that owns it.
+Given a civic-grievance SECTOR (+ the caller's location/region), return the single government
+body + department + field cadre + official channel + SLA that owns it. Covers ALL civic-service
+classes and sub-classes from the R&D master tree (docs/research/04): utilities, sanitation /
+health / planning, and records / revenue / welfare / e-governance.
 
-This is intentionally a plain lookup table, NOT an LLM: in Kural the LLM does the
-fuzzy *understanding* (speech -> {sector, locality, severity}), but the *ownership
-resolution* is deterministic so it is auditable and can never be hallucinated.
-Seeded from the R&D dossiers (docs/research/01-04, docs/architecture/01).
+This is a plain lookup table, NOT an LLM: the LLM does the fuzzy understanding (speech ->
+{sector, locality, severity}); ownership resolution is deterministic so it is auditable and can
+never be hallucinated. Anything unmapped falls back to the statewide CM Helpline (1100), so the
+router is always valid for any complaint.
 """
 
 from dataclasses import dataclass, asdict
 from typing import Optional
 
-# Regions we distinguish. locality text -> region is resolved by guess_region().
 REGION_CHENNAI = "chennai"   # Greater Chennai Corporation area
 REGION_URBAN = "urban"       # other corporations / municipalities / town panchayats
 REGION_RURAL = "rural"       # village panchayats
 REGIONS = (REGION_CHENNAI, REGION_URBAN, REGION_RURAL)
 
-# Canonical sectors the voice agent classifies into.
+# Canonical sectors / sub-classes the voice agent classifies into (full civic-service tree).
 SECTORS = [
+    # --- I. Utilities & physical infrastructure ---
     "electricity", "water_supply", "sewerage", "roads_internal", "roads_highway",
-    "stormwater", "streetlight", "solid_waste", "sanitation_toilet",
-    "public_health", "stray_animals", "town_planning", "property_tax", "other",
+    "roads_national", "stormwater", "streetlight",
+    # --- II. Sanitation, public health & urban planning ---
+    "solid_waste", "sanitation_toilet", "public_health", "stray_animals", "food_safety",
+    "town_planning", "building_approval", "hoardings", "parks", "burial_grounds",
+    # --- III. Records, revenue, welfare & e-governance ---
+    "birth_certificate", "death_certificate", "marriage_registration",
+    "property_tax", "professional_tax", "trade_licence",
+    "community_certificate", "income_certificate", "nativity_certificate",
+    "patta_chitta", "encumbrance_certificate", "ration_card", "pension",
+    "other",
 ]
 
-# SLA day anchors (business days). Hard published numbers where they exist:
-# Ooratchi Mani — water 1, streetlight 2, garbage 2, roads 5; else GCC grievance 15.
 _DEFAULT_SLA = 15
 
 
@@ -46,12 +54,12 @@ class Routing:
         return asdict(self)
 
 
-# Major TN cities -> (corporation name, is_chennai). Used to route ULB-owned issues to the
-# right city body and to infer the region. Electricity stays TNPDCL statewide but records the city.
+# Major TN cities -> (corporation name, is_chennai). Routes ULB-owned issues to the right city
+# body and infers region. Electricity stays TNPDCL statewide but records the city.
 CITY_CORP = {
     "chennai": ("Greater Chennai Corporation", True),
     "coimbatore": ("Coimbatore City Municipal Corporation", False),
-    "kuniyamuthur": ("Coimbatore City Municipal Corporation", False),   # Coimbatore locality
+    "kuniyamuthur": ("Coimbatore City Municipal Corporation", False),
     "madurai": ("Madurai Municipal Corporation", False),
     "trichy": ("Tiruchirappalli City Municipal Corporation", False),
     "tiruchirappalli": ("Tiruchirappalli City Municipal Corporation", False),
@@ -68,7 +76,6 @@ CITY_CORP = {
 
 
 def resolve_city(text):
-    """Find a known TN city/locality in free text -> (city_key, corporation, is_chennai)."""
     t = (text or "").lower()
     for city, (corp, is_chennai) in CITY_CORP.items():
         if city in t:
@@ -77,14 +84,13 @@ def resolve_city(text):
 
 
 def _r(owning_body, department, field_cadre, channel, sla_days, note=""):
-    # partial Routing (sector/region filled in by resolve())
-    return dict(owning_body=owning_body, department=department,
-                field_cadre=field_cadre, channel=channel,
-                sla_days=sla_days, note=note)
+    return dict(owning_body=owning_body, department=department, field_cadre=field_cadre,
+                channel=channel, sla_days=sla_days, note=note)
 
 
-# TABLE[sector][region] -> partial routing. "*" = applies to every region.
+# TABLE[sector][region] -> partial routing. "*" applies to every region.
 TABLE = {
+    # ---------------- I. Utilities & physical infrastructure ----------------
     "electricity": {
         "*": _r("TNPDCL (TANGEDCO/TNEB)", "Distribution", "Section Office / Lineman",
                 "1912", 2, "Billing/meter disputes escalate to CGRF -> TNERC."),
@@ -112,8 +118,11 @@ TABLE = {
     },
     "roads_highway": {
         "*": _r("TN Highways Dept / PWD", "Highways", "Assistant Engineer",
-                "CM Helpline 1100", 7,
-                "National highways -> NHAI 1033; no state-highway toll-free line."),
+                "CM Helpline 1100", 7, "State highways / major district roads."),
+    },
+    "roads_national": {
+        "*": _r("NHAI", "Highways", "Project Director", "1033", 7,
+                "National highways; RajmargYatra app / CPGRAMS."),
     },
     "stormwater": {
         REGION_CHENNAI: _r("Greater Chennai Corporation", "Storm Water Drain",
@@ -129,6 +138,8 @@ TABLE = {
         REGION_RURAL: _r("Village Panchayat", "Electrical", "Panchayat Secretary",
                          "Ooratchi Mani 155340", 2),
     },
+
+    # ---------------- II. Sanitation, public health & urban planning ----------------
     "solid_waste": {
         REGION_CHENNAI: _r("Greater Chennai Corporation", "Public Health / Conservancy",
                            "Sanitary Inspector", "1913", 2),
@@ -142,35 +153,107 @@ TABLE = {
                 "1913 / ULB", 3),
     },
     "public_health": {
-        "*": _r("ULB Health Dept", "Public Health", "Sanitary Inspector",
-                "1913 / ULB", 3,
-                "Food-safety complaints go to TN Food Safety Dept (9444042322), not the ULB."),
+        "*": _r("ULB Health Dept", "Public Health (Vector Control)", "Sanitary Inspector",
+                "1913 / ULB", 3, "Mosquito/dengue fogging, hygiene nuisances."),
     },
     "stray_animals": {
         "*": _r("Urban Local Body", "Veterinary / Public Health", "Veterinary Officer",
-                "1913 / ULB", 5),
+                "1913 / ULB", 5, "Stray dogs (ABC), stray cattle (owner fine)."),
+    },
+    "food_safety": {
+        "*": _r("TN Food Safety Dept (State Health)", "Food Safety", "Food Safety Officer",
+                "9444042322 (WhatsApp)", 7, "Unhygienic eateries / adulteration — NOT the ULB."),
     },
     "town_planning": {
         REGION_CHENNAI: _r("CMDA", "Enforcement", "Town Planning Inspector",
                            "CMDA (cmdachennai.gov.in)", 15,
-                           "Unauthorised construction / encroachment."),
+                           "Unauthorised construction / deviation / encroachment (Sec 56)."),
         "*": _r("DTCP / ULB", "Town Planning", "Town Planning Inspector",
-                "DTCP / ULB", 15),
+                "DTCP / ULB", 15, "Unauthorised construction / encroachment."),
+    },
+    "building_approval": {
+        REGION_CHENNAI: _r("CMDA", "Planning Permission", "Planning Officer",
+                           "CMDA", 30, "💰 Building plan approval (statutory fees)."),
+        "*": _r("DTCP / ULB", "Planning Permission", "Planning Officer",
+                "DTCP / ULB", 30, "💰 Building plan approval."),
+    },
+    "hoardings": {
+        "*": _r("Urban Local Body / GCC", "Licensing", "Licensing Inspector",
+                "1913 / ULB", 7, "Illegal flex / banners / hoardings."),
+    },
+    "parks": {
+        "*": _r("Urban Local Body", "Parks & Playfields", "Parks Supervisor",
+                "1913 / ULB", 10, "Parks, playgrounds, markets, bus stands upkeep."),
+    },
+    "burial_grounds": {
+        REGION_RURAL: _r("Village Panchayat", "Sanitation", "Panchayat Secretary",
+                         "Ooratchi Mani 155340", 10, "Maintenance / access."),
+        "*": _r("Urban Local Body", "Public Health", "Sanitary Inspector",
+                "1913 / ULB", 10, "Burial/cremation ground maintenance / access."),
+    },
+
+    # ---------------- III. Records, revenue, welfare & e-governance ----------------
+    "birth_certificate": {
+        "*": _r("Urban Local Body + e-Sevai", "Registration of Births & Deaths",
+                "Registrar (B&D)", "e-Sevai / tnesevai.tn.gov.in", 15,
+                "Transactional: capture + guide to e-Sevai."),
+    },
+    "death_certificate": {
+        "*": _r("Urban Local Body + e-Sevai", "Registration of Births & Deaths",
+                "Registrar (B&D)", "e-Sevai / tnesevai.tn.gov.in", 15),
+    },
+    "marriage_registration": {
+        "*": _r("Registration Dept (TNREGINET)", "Registration", "Sub-Registrar",
+                "tnreginet.gov.in", 15),
     },
     "property_tax": {
         "*": _r("Urban Local Body (Revenue)", "Revenue", "Revenue Inspector",
-                "TN Urban e-Pay / ULB", 15,
-                "Transactional: capture + redirect to e-Pay, not resolved on call."),
+                "TN Urban e-Pay / ULB", 15, "Transactional: capture + redirect to e-Pay."),
+    },
+    "professional_tax": {
+        "*": _r("Urban Local Body (Revenue)", "Revenue", "Revenue Inspector",
+                "TN Urban e-Pay / ULB", 15),
+    },
+    "trade_licence": {
+        "*": _r("Urban Local Body", "Licensing", "Sanitary Inspector (verification)",
+                "TN Urban e-Pay / ULB", 20, "💰 Trade / D&O licence."),
+    },
+    "community_certificate": {
+        "*": _r("Revenue Dept (Tahsildar/RDO)", "Revenue", "VAO / Tahsildar",
+                "e-Sevai (needs CAN)", 15, "Appeal rejections to the RDO."),
+    },
+    "income_certificate": {
+        "*": _r("Revenue Dept (Tahsildar)", "Revenue", "VAO / Tahsildar",
+                "e-Sevai (needs CAN)", 15),
+    },
+    "nativity_certificate": {
+        "*": _r("Revenue Dept (Tahsildar/RDO)", "Revenue", "VAO / Tahsildar",
+                "e-Sevai (needs CAN)", 15),
+    },
+    "patta_chitta": {
+        "*": _r("Revenue Dept", "Survey & Land Records", "VAO + Tahsildar",
+                "Tamil Nilam / e-Sevai", 30, "Transfer delays -> Tahsildar -> RTI."),
+    },
+    "encumbrance_certificate": {
+        "*": _r("Registration Dept (TNREGINET)", "Registration", "Sub-Registrar",
+                "tnreginet.gov.in", 7),
+    },
+    "ration_card": {
+        "*": _r("Food & Civil Supplies Dept / TNCSC", "PDS", "Taluk Supply Officer",
+                "TNPDS (tnpds.gov.in)", 30, "New / correction / surrender."),
+    },
+    "pension": {
+        "*": _r("Social Welfare / Revenue (District)", "Social Security", "VAO / Collectorate",
+                "CM Helpline 1100", 30, "OAP / widow / disability pensions."),
     },
 }
 
-# Safe fallback when the sector is unknown / unmapped.
+# Safe fallback — the router is always valid: anything unmapped -> statewide helpline.
 _FALLBACK = _r("CM Helpline (IIPGCMS)", "Routing Cell", "Case Officer",
-               "1100", _DEFAULT_SLA, "Unmapped sector -> statewide helpline.")
+               "1100", _DEFAULT_SLA, "Unmapped grievance -> statewide helpline.")
 
 
 def guess_region(locality_text: Optional[str]) -> str:
-    """Cheap heuristic: locality string -> region. The agent may override this."""
     t = (locality_text or "").lower()
     if "chennai" in t:
         return REGION_CHENNAI
@@ -200,7 +283,7 @@ def resolve(sector: str, region: Optional[str] = None,
     else:
         part = entry.get(region) or entry.get("*") or next(iter(entry.values()))
     r = Routing(sector=sector, region=region, city=(city or ""), **part)
-    # specialise a generic ULB/GCC owner to the actual city corporation when we know the city
-    if corp and r.owning_body in ("Urban Local Body", "Greater Chennai Corporation"):
+    if corp and r.owning_body in ("Urban Local Body", "Greater Chennai Corporation",
+                                  "Urban Local Body / GCC"):
         r.owning_body = corp
     return r

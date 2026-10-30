@@ -17,7 +17,7 @@
       "parameters": {
         "type": "object",
         "properties": {
-          "sector": { "type": "string", "description": "electricity, water_supply, sewerage, roads_internal, roads_highway, stormwater, streetlight, solid_waste, sanitation_toilet, public_health, stray_animals, town_planning, property_tax, other" },
+          "sector": { "type": "string", "description": "any civic service: electricity, water_supply, sewerage, roads_internal, roads_highway, roads_national, stormwater, streetlight, solid_waste, sanitation_toilet, public_health, stray_animals, food_safety, town_planning, building_approval, hoardings, parks, burial_grounds, birth_certificate, death_certificate, marriage_registration, property_tax, professional_tax, trade_licence, community_certificate, income_certificate, nativity_certificate, patta_chitta, encumbrance_certificate, ration_card, pension, other" },
           "locality": { "type": "string", "description": "area / street / city the caller said (e.g., 'Kuniyamuthur 12th Street Coimbatore')" },
           "region": { "type": "string", "description": "chennai | urban | rural" },
           "severity": { "type": "string", "description": "low | medium | high" },

@@ -119,6 +119,26 @@ def test_file_with_billing_overcharge():
     assert d["anomaly"] is True and d["amount_over"] > 0 and "TNPDCL" in d["owning_body"]
 
 
+def test_full_sector_coverage():
+    from app.routing import SECTORS
+    assert "TN Food Safety" in resolve("food_safety").owning_body
+    assert "Registration" in resolve("marriage_registration").owning_body
+    assert resolve("ration_card").owning_body.startswith("Food & Civil")
+    assert resolve("pension").sla_days == 30
+    # EVERY sector resolves to a valid body — the router is never empty / never crashes
+    for s in SECTORS:
+        r = resolve(s, locality_text="Chennai")
+        assert r.owning_body and r.channel and r.sla_days > 0
+
+
+def test_classify_new_subclasses():
+    from app import nlu
+    assert nlu.classify("enaku community certificate venum")["sector"] == "community_certificate"
+    assert nlu.classify("ration card correction pannanum")["sector"] == "ration_card"
+    assert nlu.classify("national highway la periya pothole")["sector"] == "roads_national"
+    assert nlu.classify("hotel la food safety problem adulteration")["sector"] == "food_safety"
+
+
 def test_area_and_ticket_status():
     g = client.get("/file", params={"sector": "water_supply", "locality": "KK Nagar Madurai spot",
                                      "region": "urban", "severity": "high", "phone": "+91777"}).json()
