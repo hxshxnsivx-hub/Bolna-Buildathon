@@ -179,3 +179,33 @@ def test_eval_romanized_and_match_ok():
         "turns": [{"speaker": "user", "text": "thanni varala"},
                   {"speaker": "agent", "text": "சரி, ticket register பண்ணிட்டேன்"}]}).json()
     assert e["eval"]["romanized_tamil"] == 1 and e["eval"]["lang_match_ok"] == 1
+
+
+# ---------- safe-fix hardening ----------
+def test_webhook_tolerant_nested_payload():
+    # Bolna's nested execution object (no flat call_id) must NOT 422/500
+    r = client.post("/call-webhook", json={"execution_id": "exec-99", "latency": 700,
+                                            "transcript": "வணக்கம் current போச்சு correct-ah சரி"})
+    assert r.status_code == 200 and r.json()["call_id"] == "exec-99"
+
+
+def test_webhook_tolerates_garbage():
+    assert client.post("/call-webhook", json={"foo": "bar"}).status_code == 200
+
+
+def test_billing_safe_parse():
+    b = billing.analyze(units="abc", amount_charged="around 500")   # no crash
+    assert "anomaly" in b and b["units_used"] == 0.0
+
+
+def test_v1_grievance_flat_post():
+    d = client.post("/v1/grievance", json={"sector": "water supply",
+        "locality": "Besant Nagar Chennai", "region": "chennai", "severity": "high",
+        "name": "T", "phone": "+91"}).json()
+    assert d["owning_body"] == "CMWSSB (Chennai Metro Water)"
+
+
+def test_eval_roman_no_false_positive():
+    from app import eval as ev
+    assert ev._has_roman_tamil("pothole near the village canal") is False
+    assert ev._has_roman_tamil("thanni varala illa") is True

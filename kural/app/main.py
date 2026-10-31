@@ -14,7 +14,7 @@ Endpoints:
 
 from pathlib import Path
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,7 +22,7 @@ from . import db, sla, nlu
 from .eval import run_eval
 from .routing import resolve
 from .service import file_grievance, cluster_key
-from .models import (GrievanceIn, GrievanceOut, ClassifyIn, CallWebhookIn,
+from .models import (GrievanceIn, GrievanceOut, ClassifyIn, FlatGrievanceIn,
                      Extracted, Caller, Locality)
 
 load_dotenv()
@@ -100,6 +100,22 @@ def file_flat(sector: str = "other", locality: str = "", region: str = "",
     caller = Caller(name=name or None, phone=phone or None, raw_address=locality or None)
     billing = {"units_used": u, "amount_charged": c, "expected_amount": e} if (u or c) else None
     return file_grievance(extracted, caller, _clean(call_id) or None,
+                          utterance or locality or None, billing=billing)
+
+
+@app.post("/v1/grievance", response_model=GrievanceOut)
+def grievance_flat(p: FlatGrievanceIn):
+    """PII-safe flat JSON body for Bolna's custom_task POST -> file_grievance (no PII in the URL)."""
+    sector = _clean(p.sector) or "other"
+    severity = _clean(p.severity) or "medium"
+    locality, region = _clean(p.locality), _clean(p.region)
+    name, phone, utterance = _clean(p.name), _clean(p.phone), _clean(p.utterance)
+    u, c, e = _num(p.units), _num(p.charged), _num(p.expected)
+    extracted = Extracted(sector=sector, severity=severity,
+                          locality=Locality(text=locality or None, region=region or None))
+    caller = Caller(name=name or None, phone=phone or None, raw_address=locality or None)
+    billing = {"units_used": u, "amount_charged": c, "expected_amount": e} if (u or c) else None
+    return file_grievance(extracted, caller, _clean(p.call_id) or None,
                           utterance or locality or None, billing=billing)
 
 
@@ -187,23 +203,43 @@ def api_escalations():
 
 
 @app.post("/call-webhook")
-def call_webhook(payload: CallWebhookIn):
-    """Bolna post-call webhook -> persist the call and run KuralEval."""
+async def call_webhook(request: Request):
+    """Bolna post-call webhook -> persist the call + run KuralEval. Accepts ANY JSON shape
+    (our flat form OR Bolna's nested execution object) and never 422s / never 500s."""
+    try:
+        body = await request.json()
+    except Exception:                 # noqa: BLE001 - tolerate non-JSON / empty bodies
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+
+    call_id = str(body.get("call_id") or body.get("execution_id") or body.get("id")
+                  or f"call-{db.now_iso()}")
+    tr = body.get("transcript") or body.get("conversation") or body.get("messages") or ""
+    turns = body.get("turns") if isinstance(body.get("turns"), list) else None
+    if turns is None and isinstance(tr, list):        # transcript arrived as a turn list
+        turns = [t for t in tr if isinstance(t, dict)]
+    if isinstance(tr, list):
+        tr = " ".join(str(t.get("text", "")) for t in tr if isinstance(t, dict))
+    tr = str(tr or "")
+    latency = body.get("latency_ms") or body.get("latency")
+    lang = body.get("lang_mix")
+
     conn = db.get_conn()
     try:
         db.insert_call(conn, dict(
-            id=payload.call_id, phone=payload.phone, started_at=db.now_iso(),
-            ended_at=db.now_iso(), recording_url=payload.recording_url,
-            transcript=payload.transcript, lang_mix=",".join(payload.lang_mix or [])))
-        scores = run_eval(dict(transcript=payload.transcript, latency_ms=payload.latency_ms,
-                               turns=payload.turns))
-        scores["call_id"] = payload.call_id
+            id=call_id, phone=body.get("phone") or body.get("from"),
+            started_at=db.now_iso(), ended_at=db.now_iso(),
+            recording_url=body.get("recording_url") or body.get("recording"),
+            transcript=tr, lang_mix=",".join(lang) if isinstance(lang, list) else (lang or "")))
+        scores = run_eval(dict(transcript=tr, latency_ms=latency, turns=turns))
+        scores["call_id"] = call_id
         scores["created_at"] = db.now_iso()
         db.insert_eval(conn, scores)
         conn.commit()
     finally:
         conn.close()
-    return {"ok": True, "eval": scores}
+    return {"ok": True, "call_id": call_id, "eval": scores}
 
 
 @app.get("/api/tickets")

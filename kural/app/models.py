@@ -67,6 +67,21 @@ class ClassifyIn(BaseModel):
     caller: Caller = Field(default_factory=Caller)
 
 
+class FlatGrievanceIn(BaseModel):
+    """Flat JSON body for Bolna's custom_task POST — PII travels in the body, not the URL."""
+    sector: Optional[str] = "other"
+    locality: Optional[str] = None
+    region: Optional[str] = None
+    severity: Optional[str] = "medium"
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    utterance: Optional[str] = None
+    units: Optional[str] = None
+    charged: Optional[str] = None
+    expected: Optional[str] = None
+    call_id: Optional[str] = None
+
+
 class CallWebhookIn(BaseModel):
     """Bolna post-call webhook payload (subset) -> drives KuralEval."""
     call_id: str

@@ -1,5 +1,5 @@
 {
-  "_comment": "Bolna agent config for Kural. Three custom_task tools call the live brain. Set up in Bolna Agent Studio (see docs/architecture/04-bolna-wiring.md). Verify exact field names against docs.bolna.ai before importing.",
+  "_comment": "Bolna agent config for Kural. file_grievance now POSTs a JSON body to /v1/grievance (PII-safe: no phone/name in the URL). The older GET /file still works if your live agent already uses it. Set up in Bolna Agent Studio (see docs/architecture/04-bolna-wiring.md); verify field names against docs.bolna.ai before importing.",
   "agent_name": "Kural",
   "transcriber": { "provider": "sarvam", "model": "saaras:v3", "language": "ta", "stream": true },
   "synthesizer": {
@@ -24,23 +24,23 @@
           "name": { "type": "string" },
           "phone": { "type": "string" },
           "utterance": { "type": "string", "description": "the caller's own words" },
-          "units_used": { "type": "number", "description": "electricity units consumed (bill disputes only)" },
-          "amount_charged": { "type": "number", "description": "amount the bill charged (bill disputes only)" },
-          "expected_amount": { "type": "number", "description": "the caller's normal/expected bill, if they know it" }
+          "units": { "type": "string", "description": "electricity units consumed (bill disputes only)" },
+          "charged": { "type": "string", "description": "amount the bill charged (bill disputes only)" },
+          "expected": { "type": "string", "description": "the caller's normal/expected bill, if they know it" }
         },
         "required": ["sector", "locality"]
       },
       "key": "custom_task",
       "value": {
-        "method": "GET",
-        "url": "https://kural-brain.onrender.com/file?sector=%(sector)s&locality=%(locality)s&region=%(region)s&severity=%(severity)s&name=%(name)s&phone=%(phone)s&utterance=%(utterance)s&units=%(units_used)s&charged=%(amount_charged)s&expected=%(expected_amount)s",
+        "method": "POST",
+        "url": "https://kural-brain.onrender.com/v1/grievance",
         "headers": { "Content-Type": "application/json" }
       },
       "param": {
         "sector": "%(sector)s", "locality": "%(locality)s", "region": "%(region)s",
         "severity": "%(severity)s", "name": "%(name)s", "phone": "%(phone)s",
-        "utterance": "%(utterance)s", "units_used": "%(units_used)s",
-        "amount_charged": "%(amount_charged)s", "expected_amount": "%(expected_amount)s"
+        "utterance": "%(utterance)s", "units": "%(units)s",
+        "charged": "%(charged)s", "expected": "%(expected)s", "call_id": "%(call_id)s"
       }
     },
     {

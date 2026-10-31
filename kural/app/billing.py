@@ -11,9 +11,17 @@ _SLABS = [(100, 0.0), (200, 2.35), (400, 4.70), (500, 6.30), (10 ** 9, 8.05)]
 ANOMALY_FACTOR = 1.5    # charged >= 1.5x expected => flag as a legitimate over-charge
 
 
-def estimate_bill(units: float) -> float:
+def _f(x, default=0.0) -> float:
+    """Safe float: 'abc' / 'around 500' / None -> default (never raises)."""
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return default
+
+
+def estimate_bill(units) -> float:
     """Rough expected amount for `units` on the approximate TN domestic slabs."""
-    units = max(float(units or 0), 0.0)
+    units = max(_f(units), 0.0)
     total, prev = 0.0, 0
     for upper, rate in _SLABS:
         if units <= prev:
@@ -24,11 +32,14 @@ def estimate_bill(units: float) -> float:
 
 
 def analyze(units, amount_charged, expected=None) -> dict:
-    """Return the billing breakdown + anomaly flag. `expected` overrides the slab estimate."""
-    units = float(units or 0)
-    charged = float(amount_charged or 0)
+    """Return the billing breakdown + anomaly flag. `expected` overrides the slab estimate.
+    All inputs are parsed safely so a non-numeric caller/LLM value can never crash a live call."""
+    units = _f(units)
+    charged = _f(amount_charged)
     given = expected not in (None, "", 0, "0", 0.0)
-    exp = float(expected) if given else estimate_bill(units)
+    exp = _f(expected) if given else estimate_bill(units)
+    if exp <= 0:                      # bad/zero 'expected' -> fall back to the slab estimate
+        exp = estimate_bill(units)
     over = round(charged - exp, 2)
     pct = round(100 * over / exp, 1) if exp > 0 else 0.0
     anomaly = bool(charged > 0 and exp > 0 and charged >= exp * ANOMALY_FACTOR)

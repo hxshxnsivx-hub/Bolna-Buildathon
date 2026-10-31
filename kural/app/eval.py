@@ -11,20 +11,23 @@ Plus task_complete, repair_ok, latency, hallucination, compliance.
 LLM-as-judge for the 0/1 judgments when OPENAI_API_KEY is set; the language metrics are always
 computed deterministically from the text. Falls back to a pure heuristic with no key."""
 
+import re
+
 from . import llm
 
 _TAMIL = range(0x0B80, 0x0C00)        # Tamil Unicode block
-# Common romanized-Tamil ("Tanglish") markers — caller typing/speaking Tamil in Latin script.
-_ROMAN = ("vanakkam", "thanni", "illa", "iruku", "irukku", "aagala", "aagla", "aachu", "naal",
-          "enga", "romba", "seri", "sari", "panna", "pannu", "pannunga", "panni", "kuppai",
-          "theru", "vandhu", "venum", "kedaikum", "anuppu", "pukar", "varala", "poachu", "poyi")
+# Romanized-Tamil ("Tanglish") marker WORDS — matched as whole tokens (not substrings),
+# so "illa" no longer matches "v-illa-ge" and "naal" no longer matches "ca-nal".
+_ROMAN = frozenset({
+    "vanakkam", "thanni", "illa", "iruku", "irukku", "aagala", "aagla", "aachu", "naal",
+    "enga", "romba", "seri", "sari", "panna", "pannu", "pannunga", "panni", "kuppai",
+    "theru", "vandhu", "venum", "kedaikum", "anuppu", "pukar", "varala", "poachu", "poyi"})
 
 
 def _has_tamil(s): return any(ord(c) in _TAMIL for c in s)
 def _has_latin(s): return any("a" <= c.lower() <= "z" for c in s)
 def _has_roman_tamil(s):
-    low = (s or "").lower()
-    return any(w in low for w in _ROMAN)
+    return bool(_ROMAN & set(re.findall(r"[a-z]+", (s or "").lower())))
 
 
 def _tamil_ratio(s: str) -> int:
@@ -91,11 +94,24 @@ def _llm(call: dict) -> dict | None:
     d = llm.chat_json(sys, tr)
     if not d:
         return None
-    flags = {k: int(d.get(k, 0)) for k in
+
+    def _si(x):                       # tolerate "yes"/"true"/"high"/garbage without crashing
+        try:
+            return 1 if int(x) else 0
+        except (TypeError, ValueError):
+            return 1 if str(x).strip().lower() in ("1", "true", "yes", "y", "high") else 0
+
+    flags = {k: _si(d.get(k, 0)) for k in
              ("asr_ok", "lang_switch_ok", "lang_match_ok", "task_complete",
               "repair_ok", "hallucination", "compliance_ok")}
-    return _finalize(flags, call, d.get("notes", "llm-judge"))
+    return _finalize(flags, call, str(d.get("notes", "llm-judge")))
 
 
 def run_eval(call: dict) -> dict:
-    return _llm(call) or _heuristic(call)
+    try:
+        scored = _llm(call)
+        if scored:
+            return scored
+    except Exception as e:            # noqa: BLE001 - eval must never crash the webhook
+        print(f"[eval _llm error] {e}")
+    return _heuristic(call)

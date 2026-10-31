@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kural — SWAT Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<script>
+  tailwind.config = { darkMode:'class', theme:{ extend:{
+    colors:{ ink:'#0a0e1a', saffron:'#f59e0b', brand:{400:'#818cf8',500:'#6366f1',600:'#4f46e5'} },
+    fontFamily:{ sans:['Inter','system-ui','sans-serif'], mono:['JetBrains Mono','monospace'] } }}}
+</script>
+<style>
+  :root{color-scheme:dark} body{background:#0a0e1a}
+  .glow::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+    background:radial-gradient(60rem 40rem at 15% -10%,rgba(99,102,241,.18),transparent 60%),
+      radial-gradient(50rem 35rem at 100% 0%,rgba(245,158,11,.10),transparent 55%)}
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.015));
+    border:1px solid rgba(255,255,255,.08)}
+  ::-webkit-scrollbar{width:8px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:8px}
+</style>
+</head>
+<body class="glow min-h-screen text-slate-200 font-sans antialiased">
+<header class="sticky top-0 z-20 backdrop-blur-xl bg-ink/70 border-b border-white/10">
+  <div class="max-w-6xl mx-auto px-5 py-3.5 flex flex-wrap items-center gap-3">
+    <div class="h-9 w-9 rounded-lg grid place-items-center bg-gradient-to-br from-saffron to-brand-600 font-bold text-ink">🛰️</div>
+    <div>
+      <div class="font-extrabold tracking-tight text-white">Kural — SWAT Code Review</div>
+      <div class="text-[11px] text-slate-400 -mt-0.5">3-agent audit · sequential ×2 + relational · read-only</div>
+    </div>
+    <div class="ms-auto text-[11px] text-emerald-400">✅ system verified live · 21/21 tests · nothing changed</div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-5 py-6 space-y-6">
+
+  <!-- KPI row -->
+  <section class="grid grid-cols-2 sm:grid-cols-5 gap-3" id="kpis"></section>
+
+  <!-- Fix-before-submit banner -->
+  <section class="card rounded-2xl p-5 ring-1 ring-saffron/20">
+    <h2 class="text-sm font-semibold text-saffron mb-2">⚡ Recommended before submission (safe + high-value)</h2>
+    <ul class="text-sm text-slate-300 space-y-1.5 list-disc ps-5">
+      <li><b>Make <span class="font-mono">/call-webhook</span> tolerant of Bolna's real payload</b> (alias <span class="font-mono">execution_id→call_id</span>, optional fields, map the nested transcript) — this is why your live <b>evals = 0</b>; fixes KuralEval in production. <span class="text-emerald-400">brain-only, safe</span></li>
+      <li><b>Switch the <span class="font-mono">file_grievance</span> tool to POST <span class="font-mono">/grievance</span> (JSON body)</b> — removes phone/name from URLs and stops an address with "&" or "#" from corrupting the call. <span class="text-emerald-400">Bolna config, endpoint already exists</span></li>
+      <li><b>Crash-guards:</b> safe numeric parse in <span class="font-mono">billing.py</span> + safe int in <span class="font-mono">eval.py</span> so a weird LLM/caller value can't 500 a live call. <span class="text-emerald-400">tiny, safe</span></li>
+      <li><b>(If time)</b> atomic ticket id + SQLite WAL — avoids an IntegrityError under concurrent calls. <span class="text-slate-500">low risk in a demo</span></li>
+    </ul>
+  </section>
+
+  <!-- Filters -->
+  <div class="flex items-center gap-2 text-xs">
+    <span class="text-slate-500">Findings:</span>
+    <button data-f="all"  class="flt px-3 py-1 rounded-full ring-1 ring-white/15 bg-white/10">All</button>
+    <button data-f="high" class="flt px-3 py-1 rounded-full ring-1 ring-rose-500/30 text-rose-300">High</button>
+    <button data-f="med"  class="flt px-3 py-1 rounded-full ring-1 ring-amber-500/30 text-amber-300">Medium</button>
+    <button data-f="low"  class="flt px-3 py-1 rounded-full ring-1 ring-slate-500/30 text-slate-300">Low</button>
+  </div>
+  <section id="findings" class="grid md:grid-cols-2 gap-3"></section>
+
+  <!-- Novelty -->
+  <section class="card rounded-2xl p-5">
+    <h2 class="text-sm font-semibold text-white mb-3">💡 Cross-phase novelty opportunities</h2>
+    <ol id="novelty" class="text-sm text-slate-300 space-y-2 list-decimal ps-5"></ol>
+  </section>
+
+  <!-- Optimizations -->
+  <section class="card rounded-2xl p-5">
+    <h2 class="text-sm font-semibold text-white mb-3">🛠️ Optimizations (ranked, all safe)</h2>
+    <ol id="opts" class="text-sm text-slate-300 space-y-1.5 list-decimal ps-5"></ol>
+  </section>
+
+  <footer class="text-center text-[11px] text-slate-600 pt-2">
+    What's already strong: 5-way taxonomy sync · deterministic routing (never raises) · offline degradation everywhere · billing survives all hops.
+  </footer>
+</main>
+
+<script>
+const F = [
+ {s:'high',a:'db.py:113',t:'COUNT-based ticket id → IntegrityError 500 under concurrent calls',f:'Atomic/monotonic id (counter table or INSERT…RETURNING) + SQLite WAL + busy_timeout'},
+ {s:'high',a:'bolna_agent.json:36 / main.py:83',t:'PII (phone/name) in GET URL; an address with "&" or "#" corrupts the request',f:'Switch file_grievance → POST /grievance (JSON body) — endpoint already exists'},
+ {s:'high',a:'main.py:30,157',t:'No auth on /file,/intake,/grievance,/ticket/resolve + CORS "*" — anyone can file/resolve civic tickets',f:'Shared secret on write + webhook endpoints; scope CORS to Bolna'},
+ {s:'high',a:'bolna_agent.json:36',t:'call_id dropped on the Bolna path → tickets can’t join their call or eval',f:'Thread call_id (or match phone+timestamp in the webhook)'},
+ {s:'high',a:'models.py:70 / call-webhook',t:'Webhook shape assumed → Bolna’s nested payload 422s → KuralEval never runs in prod (explains live evals=0)',f:'Tolerant /call-webhook: alias execution_id→call_id, optional fields, map nested transcript'},
+ {s:'high',a:'routing.py:293',t:'City detection overrides rural routing — "village panchayat near Salem" → urban body',f:'Consult guess_region before the city override when rural markers are present'},
+ {s:'high',a:'nlu.py:56',t:'"waterlogging" contains "water" → monsoon flooding misrouted to water_supply, not storm-water drains',f:'Scored matching (specific cues win) instead of first-substring'},
+
+ {s:'med',a:'service.py:90',t:'Billing anomaly spoken to the caller but NOT persisted on a dedup-merge',f:'UPDATE merged ticket’s billing if new over-charge is larger; set anomaly'},
+ {s:'med',a:'eval.py:18,51',t:'Romanized-Tamil substrings ("illa"⊂village, "naal"⊂canal) flip lang_match_ok',f:'Token / word-boundary matching'},
+ {s:'med',a:'eval.py:94',t:'Unvalidated LLM ints (e.g. "yes") 500 the webhook — no fallback',f:'Safe int coercion + wrap _llm in try/except'},
+ {s:'med',a:'service.py:47',t:'Dedup read-then-insert race (no txn / unique constraint) → duplicate tickets',f:'Transaction + partial unique index on cluster_key WHERE status=open'},
+ {s:'med',a:'main.py:115 vs service.py:34',t:'cluster_key region differs between /area-status and filing → "already N reported" count can mismatch',f:'Resolve region identically (move region inference into resolve())'},
+ {s:'med',a:'sla.py:24',t:'Naive local time → UTC Render host makes IST breach/weekday math wrong; a breach can go silent',f:'Timezone-aware IST now_iso/due_at'},
+ {s:'med',a:'sla.py:39',t:'Escalation uses calendar days but SLA due uses business days (inconsistent clocks)',f:'Business-days-overdue for escalation; add a TN holiday set'},
+ {s:'med',a:'llm.py:30',t:'No request timeout → a hung provider blocks the FastAPI worker mid-call',f:'Pass timeout= + max_retries; cache the client'},
+ {s:'med',a:'llm.py:12',t:'GROQ/GEMINI key but default model gpt-4o-mini → every call errors → silent heuristic fallback',f:'Auto-derive base_url + default model from which key env is set'},
+ {s:'med',a:'billing.py:28',t:'Non-numeric units/charged ("around 500") crash analyze → 500',f:'Safe _num parser inside billing too'},
+ {s:'med',a:'main.py:83',t:'GET /file creates a ticket (non-idempotent) → a retry / link prefetch double-files',f:'POST only; idempotency key'},
+ {s:'med',a:'index.html:320',t:'Full table re-render every 3s → flicker, lost selection, 4 fetches regardless of change',f:'Hash responses & skip rebuild when unchanged (or SSE push)'},
+ {s:'med',a:'db.py:90',t:'sms_sent (and base cols) missing from the migration list → OperationalError on an upgraded old DB',f:'Add to ALTER list'},
+ {s:'med',a:'service.py:69',t:'Office dispatch fires before commit → could notify on a ticket that rolls back',f:'Dispatch after commit, or make idempotent'},
+ {s:'med',a:'routing.py:98,280',t:'Substring false positives: "eroded"→Erode, "floor"/"door"→rural',f:'Word-boundary regex for resolve_city / guess_region'},
+ {s:'med',a:'service.py:20 vs prompt',t:'spoken_confirmation has two sources (brain string vs agent prompt) → citizen line can drift from filed data',f:'Make the brain string the sole confirmation source'},
+
+ {s:'low',a:'db.py:119,143',t:'Dead code: find_open_duplicate, cluster_count (superseded by open_duplicate_ticket)',f:'Delete'},
+ {s:'low',a:'index.html:159',t:'Dashboard claims eval scores "latency" but latency is excluded from overall',f:'Factor it in or drop the claim'},
+ {s:'low',a:'models.py:15,23',t:'severity/region/sector free strings → a typo degrades silently',f:'Literal / Enum at the contract edge'},
+ {s:'low',a:'dispatch.py:8',t:'Bracket access on a partial ticket (KeyError) + misleading status:"queued"',f:'Use .get() everywhere; "logged"; use logging not print'},
+ {s:'low',a:'main.py:35',t:'@app.on_event("startup") is deprecated',f:'Move to the lifespan handler'},
+ {s:'low',a:'service.py:62',t:'summary stores raw utterance (may contain name/address PII) with no redaction',f:'Redact or minimize stored PII'},
+];
+const NOV = [
+ 'Outcome-grounded KuralEval — score a call against what actually happened to its ticket (routed right? resolved in SLA? real hotspot?). No English-first eval vendor has civic ground truth — a uniquely defensible wedge.',
+ 'Self-healing prompts — mine eval_scores for recurring failures → auto-generate a system-prompt diff → one-click apply on the dashboard. This is literally Bolna’s daily job.',
+ 'Offline-first queue-and-forward — a durable intake buffer that replays into file_grievance on recovery (the free host sleeps; a cold-start call can lose its ticket).',
+ 'Real escalation engine — breach/hotspot scheduler → dispatch → sla_events → live on the dashboard. Turns a read-only board into an accountability tool a government would buy.',
+ 'Standalone "vernacular agent QA" API — the eval stack is ~90% civic-agnostic; expose it as "score any Tanglish voice agent" (dossier 06’s #1 pick: a tool Bolna itself would use).',
+ 'NLU confidence + top-2 candidates → the agent asks ONE disambiguating Tanglish question ("thanni supply-a, illa thanni thengi-a?") instead of silently guessing.',
+ 'Billing: on an anomaly, emit the exact over-charged ₹, the offending slab, and a ready-to-read Tamil CGRF dispute script the agent speaks aloud.',
+ 'Civic heatmap (GET /api/heatmap) — group open tickets by (locality, sector) into a "where are things breaking" map on the dashboard, near-zero new storage.',
+ 'Spoken merge_reason — tell the caller WHY they were merged ("already 4 reported, neenga 5-வது"), turning dedup into a trust-building line.',
+];
+const OPT = [
+ 'Make /call-webhook tolerant of Bolna’s real payload — prevents the silent 422 that currently kills KuralEval on every real call. (HIGH value / LOW effort)',
+ 'Thread call_id end-to-end (/file + webhook) — unlocks ticket↔call↔eval and the outcome-grounded eval. (HIGH / LOW-MED)',
+ 'Switch file_grievance → POST /grievance JSON — removes PII-in-URL and "&"/space corruption, idempotent-friendly, no brain change. (HIGH / LOW)',
+ 'Atomic ticket id + WAL + busy_timeout — kills the concurrency IntegrityError and "database is locked". (HIGH / LOW-MED)',
+ 'Scored NLU matching + word-boundary city/region regex — fixes waterlogging/supply misroutes and "floor"/"eroded" false positives in one pass. (MED / LOW)',
+ 'Safe numeric parsing in billing + safe int in eval + wrap _llm in try/except — removes two live-call 500 surfaces. (MED / LOW)',
+ 'llm.py: timeout + max_retries + cached client + auto base_url from key — bounds latency, "drop any key it works". (MED / LOW)',
+ 'Timezone-aware IST time; business-day escalation; TN holiday calendar — makes the SLA clock correct on Render. (MED / LOW)',
+ 'Persist billing on merge + set sms_sent for duplicates + return merge_reason. (MED / LOW)',
+ 'Dashboard: skip rebuild when unchanged (hash) + business-day countdown + failure UI. (MED / LOW)',
+ 'Auth/secret on write + webhook endpoints; tighten CORS off "*". (HIGH / LOW-MED)',
+ 'Unify cluster_key region; add indexes tickets(status,due_at) + partial unique cluster_key. (MED / LOW)',
+];
+
+const SEV={high:'bg-rose-500/15 text-rose-300 ring-rose-500/30',med:'bg-amber-500/15 text-amber-300 ring-amber-500/30',low:'bg-slate-500/15 text-slate-300 ring-slate-500/30'};
+const esc=s=>(s||'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+let filter='all';
+
+function kpis(){
+  const h=F.filter(x=>x.s==='high').length,m=F.filter(x=>x.s==='med').length,l=F.filter(x=>x.s==='low').length;
+  const tiles=[['Findings',F.length,'text-white'],['High',h,'text-rose-400'],['Medium',m,'text-amber-400'],
+    ['Novelty ideas',NOV.length,'text-saffron'],['Optimizations',OPT.length,'text-brand-400']];
+  document.getElementById('kpis').innerHTML=tiles.map(([k,v,c])=>
+    `<div class="card rounded-xl p-3"><div class="text-[11px] text-slate-400">${k}</div>
+     <div class="font-mono text-2xl font-bold ${c} mt-0.5">${v}</div></div>`).join('');
+}
+function render(){
+  const rows=F.filter(x=>filter==='all'||x.s===filter)
+    .sort((a,b)=>({high:0,med:1,low:2}[a.s]-{high:0,med:1,low:2}[b.s]));
+  document.getElementById('findings').innerHTML=rows.map(x=>`
+    <div class="card rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-1.5">
+        <span class="inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase ring-1 ${SEV[x.s]}">${x.s}</span>
+        <span class="font-mono text-[11px] text-brand-300">${esc(x.a)}</span>
+      </div>
+      <div class="text-sm text-white font-medium">${esc(x.t)}</div>
+      <div class="text-xs text-slate-400 mt-1.5">➜ ${esc(x.f)}</div>
+    </div>`).join('');
+  document.querySelectorAll('.flt').forEach(b=>b.classList.toggle('bg-white/10',b.dataset.f===filter));
+}
+document.querySelectorAll('.flt').forEach(b=>b.onclick=()=>{filter=b.dataset.f;render();});
+document.getElementById('novelty').innerHTML=NOV.map(n=>`<li>${esc(n)}</li>`).join('');
+document.getElementById('opts').innerHTML=OPT.map(o=>`<li>${esc(o)}</li>`).join('');
+kpis();render();
+</script>
+</body>
+</html>
