@@ -37,6 +37,26 @@ SECTORS = [
 
 _DEFAULT_SLA = 15
 
+# Normalise the loose phrasing an LLM may emit into a canonical sector key.
+_ALIASES = {
+    "power": "electricity", "eb": "electricity", "current": "electricity",
+    "electricity_bill": "electricity", "water": "water_supply", "drinking_water": "water_supply",
+    "drainage": "sewerage", "garbage": "solid_waste", "trash": "solid_waste",
+    "waste": "solid_waste", "road": "roads_internal", "pothole": "roads_internal",
+    "street_light": "streetlight", "street_lights": "streetlight",
+    "mosquito": "public_health", "dog": "stray_animals", "dogs": "stray_animals",
+    "cattle": "stray_animals", "encroachment": "town_planning",
+    "ration": "ration_card", "patta": "patta_chitta",
+}
+
+
+def normalize_sector(sector: str) -> str:
+    """Canonicalise: lowercase, spaces/hyphens -> underscores, then alias-map."""
+    s = (sector or "other").strip().lower().replace(" ", "_").replace("-", "_")
+    if s not in TABLE and s in _ALIASES:
+        s = _ALIASES[s]
+    return s
+
 
 @dataclass
 class Routing:
@@ -266,7 +286,7 @@ def guess_region(locality_text: Optional[str]) -> str:
 def resolve(sector: str, region: Optional[str] = None,
             locality_text: Optional[str] = None) -> Routing:
     """(sector x region) -> the owning body that must act, specialised to the city. Never raises."""
-    sector = (sector or "other").strip().lower()
+    sector = normalize_sector(sector)
     city, corp, is_chennai = resolve_city(locality_text)
     if region:
         region = region.strip().lower()

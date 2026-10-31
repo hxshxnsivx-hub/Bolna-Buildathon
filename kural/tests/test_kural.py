@@ -131,6 +131,13 @@ def test_full_sector_coverage():
         assert r.owning_body and r.channel and r.sla_days > 0
 
 
+def test_sector_normalization():
+    # the LLM may emit "water supply" / "Power" / "garbage" — all must route correctly
+    assert resolve("water supply", region="chennai").owning_body == "CMWSSB (Chennai Metro Water)"
+    assert "TNPDCL" in resolve("Power", locality_text="Coimbatore").owning_body
+    assert resolve("garbage", region="chennai").sector == "solid_waste"
+
+
 def test_classify_new_subclasses():
     from app import nlu
     assert nlu.classify("enaku community certificate venum")["sector"] == "community_certificate"
