@@ -11,6 +11,7 @@ never be hallucinated. Anything unmapped falls back to the statewide CM Helpline
 router is always valid for any complaint.
 """
 
+import re
 from dataclasses import dataclass, asdict
 from typing import Optional
 
@@ -96,9 +97,10 @@ CITY_CORP = {
 
 
 def resolve_city(text):
-    t = (text or "").lower()
+    """Match a known city as a WHOLE token (so 'eroded' no longer matches 'erode')."""
+    toks = set(re.findall(r"[a-z]+", (text or "").lower()))
     for city, (corp, is_chennai) in CITY_CORP.items():
-        if city in t:
+        if city in toks:
             return city, corp, is_chennai
     return None, None, None
 
@@ -273,12 +275,15 @@ _FALLBACK = _r("CM Helpline (IIPGCMS)", "Routing Cell", "Case Officer",
                "1100", _DEFAULT_SLA, "Unmapped grievance -> statewide helpline.")
 
 
+_RURAL = frozenset({"village", "panchayat", "gramam", "rural", "hamlet", "ooru", "oorani"})
+
+
 def guess_region(locality_text: Optional[str]) -> str:
+    """Whole-token rural check — 'thanjavur'/'floor' no longer mis-flag as rural."""
     t = (locality_text or "").lower()
     if "chennai" in t:
         return REGION_CHENNAI
-    rural_markers = ("village", "panchayat", "gramam", "oor", "ur ", "rural", "hamlet")
-    if any(m in t for m in rural_markers):
+    if _RURAL & set(re.findall(r"[a-z]+", t)):
         return REGION_RURAL
     return REGION_URBAN
 
