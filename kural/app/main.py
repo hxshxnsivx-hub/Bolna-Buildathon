@@ -66,22 +66,40 @@ def intake(payload: ClassifyIn):
     return file_grievance(extracted, payload.caller, None, payload.utterance)
 
 
+def _clean(x):
+    """Strip whitespace; treat empty or an unsubstituted '%(name)s' template as blank."""
+    x = (x or "").strip()
+    return "" if (x == "" or x.startswith("%(")) else x
+
+
+def _num(x):
+    x = _clean(x)
+    try:
+        return float(x) if x else None
+    except ValueError:
+        return None
+
+
 @app.api_route("/file", methods=["GET", "POST"])
 def file_flat(sector: str = "other", locality: str = "", region: str = "",
               severity: str = "medium", name: str = "", phone: str = "",
               call_id: str = "", utterance: str = "",
-              units: float | None = None, charged: float | None = None,
-              expected: float | None = None):
+              units: str | None = None, charged: str | None = None,
+              expected: str | None = None):
     """Flat-params entry for Bolna's custom_task tool (templates %(name)s into a URL).
-    For electricity bill disputes pass units/charged/(expected) -> the brain computes the
-    over-charge + anomaly. Maps simple query params -> file_grievance."""
-    extracted = Extracted(sector=sector or "other", severity=severity or "medium",
+    Robust to empty / unsubstituted billing params. For electricity bill disputes pass
+    units/charged/(expected) -> the brain computes the over-charge + anomaly."""
+    sector = _clean(sector) or "other"
+    severity = _clean(severity) or "medium"
+    locality, region = _clean(locality), _clean(region)
+    name, phone, utterance = _clean(name), _clean(phone), _clean(utterance)
+    u, c, e = _num(units), _num(charged), _num(expected)
+
+    extracted = Extracted(sector=sector, severity=severity,
                           locality=Locality(text=locality or None, region=region or None))
     caller = Caller(name=name or None, phone=phone or None, raw_address=locality or None)
-    billing = None
-    if units is not None or charged is not None:
-        billing = {"units_used": units, "amount_charged": charged, "expected_amount": expected}
-    return file_grievance(extracted, caller, call_id or None,
+    billing = {"units_used": u, "amount_charged": c, "expected_amount": e} if (u or c) else None
+    return file_grievance(extracted, caller, _clean(call_id) or None,
                           utterance or locality or None, billing=billing)
 
 
