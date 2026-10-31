@@ -32,9 +32,12 @@
   #mapbg{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
   #mapbox{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
     width:min(78vh,620px);height:min(100vh,800px)}
-  #tn-silhouette{width:100%;height:100%;filter:drop-shadow(0 18px 40px rgba(140,84,36,.25))}
-  #tn-silhouette path{opacity:0;animation:landrise 1.2s ease forwards .1s}
-  @keyframes landrise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  #tnmap{width:100%;height:100%;filter:drop-shadow(0 18px 40px rgba(140,84,36,.28))}
+  .dpath{fill:rgba(184,115,51,.40);stroke:#f6eedd;stroke-width:.8;stroke-linejoin:round;
+    opacity:0;transform-box:fill-box;transform-origin:center;
+    animation:dbloom .6s cubic-bezier(.34,1.56,.64,1) forwards;transition:fill .3s}
+  .dpath:hover{fill:rgba(140,84,36,.62)}
+  @keyframes dbloom{from{opacity:0;transform:scale(.5)}to{opacity:1;transform:scale(1)}}
   .district{position:absolute;transform:translate(-50%,-50%) scale(0);pointer-events:auto;cursor:pointer;
     opacity:0;animation:bloom .7s cubic-bezier(.34,1.56,.64,1) forwards}
   @keyframes bloom{to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
@@ -62,7 +65,7 @@
   body.intro #mapbg{transform:scale(1.1)}
   #mapbox{opacity:.72;transition:opacity 1.1s ease}
   body.intro #mapbox{opacity:1}
-  body.intro .d-label{opacity:1;transform:translate(-50%,-100%) scale(1)}
+  /* district labels show on hover only (clean intro) */
   #app{opacity:0;transition:opacity .9s ease}
   body:not(.intro) #app{opacity:1}
   #intro-title{position:fixed;inset:0;z-index:40;display:grid;place-items:center;pointer-events:none;transition:opacity .9s ease}
@@ -86,22 +89,7 @@
 
 <!-- Tamil Nadu districts background -->
 <div id="mapbg"><div id="mapbox">
-  <svg id="tn-silhouette" viewBox="0 0 440 580" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <linearGradient id="cop" x1="0" y1="0" x2="1" y2="1">
-        <stop offset="0" stop-color="#d89a63" stop-opacity=".55"/>
-        <stop offset="1" stop-color="#b87333" stop-opacity=".30"/>
-      </linearGradient>
-    </defs>
-    <path d="M150 95 C200 80 280 82 330 100 C346 130 330 165 322 190 C348 215 362 236 345 260
-             C361 281 379 301 360 321 C330 351 300 381 276 421 C256 461 236 500 210 536
-             C190 505 170 475 158 440 C140 400 120 360 110 320 C96 290 76 270 81 245
-             C60 225 55 205 72 185 C96 155 120 125 150 95 Z"
-          fill="url(#cop)" stroke="#b87333" stroke-width="2" stroke-opacity=".5" stroke-linejoin="round"/>
-      <path class="seg" d="M108 180 C190 168 290 176 348 215"/>
-      <path class="seg" d="M110 322 C200 300 300 302 360 321"/>
-      <path class="seg" d="M156 440 C205 420 248 430 276 421"/>
-  </svg>
+  <svg id="tnmap" viewBox="0 0 440 580" xmlns="http://www.w3.org/2000/svg"></svg>
   <div id="districts"></div>
 </div></div>
 
@@ -231,15 +219,21 @@ const DIST=[
  {n:'Vellore',ta:'வேலூர்',note:'கோட்டை · Fort & leather',x:250,y:148,key:'vellore'},
  {n:'Chennai',ta:'சென்னை',note:'தலைநகர் · Marina & autos',x:322,y:116,key:'chennai'},
 ];
-function initMap(){
-  const order=[...DIST].sort((a,b)=>b.y-a.y);          // south -> north
-  $('#districts').innerHTML=order.map((d,i)=>`
-    <div class="district" style="left:${d.x/440*100}%;top:${d.y/580*100}%;animation-delay:${(.4+i*0.42).toFixed(2)}s" data-key="${d.key}">
+const MATCH={chennai:'chennai',coimbatore:'coimbatore',madurai:'madurai',thanjavur:'thanjavur',
+  erode:'erode',salem:'salem',vellore:'vellore',tirunelveli:'tirunelveli',
+  kanyakumari:'kanyakumari',trichy:'tiruchirappalli'};
+async function fetchMap(){
+  let dd=[];try{dd=await fetch(API+'/tn_districts.json').then(r=>r.json());}catch(e){}
+  // real district shapes, blooming south->north (already sorted)
+  $('#tnmap').innerHTML=dd.map((d,i)=>`<path class="dpath" d="${d.d}" style="animation-delay:${(i*0.12).toFixed(2)}s"></path>`).join('');
+  const cen={};dd.forEach(d=>cen[(d.name||'').toLowerCase()]=[d.cx,d.cy]);
+  // featured districts: pin + specialty label + live count, at their TRUE centroid
+  $('#districts').innerHTML=DIST.map(d=>{const c=cen[MATCH[d.key]]||[d.x,d.y];
+    return `<div class="district" style="left:${c[0]/440*100}%;top:${c[1]/580*100}%" data-key="${d.key}">
       <div class="d-label"><div class="d-card">
         <div class="d-name"><span class="tamil">${d.ta}</span> ${d.n}<span class="d-count" data-c="${d.key}">0</span></div>
         <div class="d-note tamil">${d.note}</div></div></div>
-      <div class="pin"></div>
-    </div>`).join('');
+      <div class="pin"></div></div>`;}).join('');
 }
 const SEV={high:['var(--rust)','rgba(180,67,15,.12)','rgba(180,67,15,.35)'],
   medium:['var(--ochre)','rgba(192,134,12,.14)','rgba(192,134,12,.35)'],
@@ -333,7 +327,7 @@ async function fileGrievance(){const v=$('#utt').value.trim();if(!v)return;
   $('#fileBtn').disabled=false;$('#fileBtn').textContent='File';}
 $('#fileBtn').addEventListener('click',fileGrievance);
 $('#utt').addEventListener('keydown',e=>{if(e.key==='Enter')fileGrievance();});
-initMap();load();setInterval(load,4000);
+fetchMap();load();setInterval(load,4000);
 setTimeout(()=>document.body.classList.remove('intro'),4800);  // districts assemble, then reveal
 </script>
 </body>

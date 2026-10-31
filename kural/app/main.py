@@ -35,12 +35,48 @@ WEB_DIR = Path(__file__).resolve().parent.parent / "web"
 @app.on_event("startup")
 def _startup():
     db.init_db()
+    try:
+        _seed_if_empty()
+    except Exception as e:            # noqa: BLE001
+        print(f"[seed] {e}")
+
+
+def _seed_if_empty():
+    """Keep the dashboard populated after a free-host restart (SQLite is ephemeral)."""
+    conn = db.get_conn()
+    try:
+        n = conn.execute("SELECT COUNT(*) AS c FROM tickets").fetchone()["c"]
+    finally:
+        conn.close()
+    if n:
+        return
+    demos = [
+        ("electricity", "Kuniyamuthur Coimbatore", "urban", "high", "Senthil", "+919000000007",
+         "200 units use pannen aana bill 2000 vandhuchu", {"units_used": 200, "amount_charged": 2000}),
+        ("water_supply", "Anna Nagar West Chennai", "chennai", "high", "Kumar", "+910001", None, None),
+        ("water_supply", "Anna Nagar West Chennai", "chennai", "high", "Devi", "+910002", None, None),
+        ("water_supply", "Anna Nagar West Chennai", "chennai", "medium", "Fathima", "+910003", None, None),
+        ("streetlight", "Adyar Chennai", "chennai", "high", "Ravi", "+910004", None, None),
+        ("solid_waste", "Madurai", "urban", "medium", "Lakshmi", "+910005", None, None),
+        ("roads_internal", "Thanjavur", "urban", "medium", "Mani", "+910006", None, None),
+        ("solid_waste", "Salem", "urban", "medium", "Raja", "+910008", None, None),
+    ]
+    for sec, loc, reg, sev, nm, ph, utt, bill in demos:
+        file_grievance(Extracted(sector=sec, severity=sev,
+                                 locality=Locality(text=loc, region=reg)),
+                       Caller(name=nm, phone=ph, raw_address=loc), utterance=utt, billing=bill)
 
 
 @app.get("/")
 def home():
     """Serve the Tailwind ops dashboard at the API origin — no CORS, no build."""
     return FileResponse(WEB_DIR / "index.html")
+
+
+@app.get("/tn_districts.json")
+def tn_districts():
+    """Real Tamil Nadu district geometry (projected SVG paths) for the map background."""
+    return FileResponse(WEB_DIR / "tn_districts.json")
 
 
 @app.get("/health")
