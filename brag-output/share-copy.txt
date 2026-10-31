@@ -1,0 +1,14 @@
+A Tamil citizen just speaks — "200 units use pannen, aana bill ₹2000 vandhuchu" — and Kural routes it to TNPDCL, flags the ₹1,765 over-charge for CGRF, and files an SLA-tracked ticket. One voice call, the right department. No app, no English, no queue.
+
+And it grades its own work: KuralEval scores every call on ASR, language-match, code-switch, task completion and self-repair — a vernacular QA layer for Tanglish voice agents.
+
+Kural · குரல் — an autonomous civic-grievance voice agent for Tamil Nadu. 31 sectors · 37 districts · self-evaluating. Built on Bolna + Plivo + Sarvam, as Tamil Nadu invests ₹398 cr in AI governance.
+
+#TamilNadu #VoiceAI #CivicTech #Bolna #Tanglish
+
+---
+X/Twitter (short):
+Speak your civic complaint in Tanglish. Kural routes it to the right agency, flags bill over-charges, files an SLA ticket — then grades its own call (KuralEval). One phone call. குரல். 🪔 #VoiceAI #CivicTech
+
+LinkedIn (one line):
+Kural turns a spoken Tanglish complaint into a correctly-routed, SLA-tracked civic ticket across Tamil Nadu's agencies — and self-scores every call with KuralEval. One phone call, no app, no English. Built for the state's ₹398 cr AI-governance push.

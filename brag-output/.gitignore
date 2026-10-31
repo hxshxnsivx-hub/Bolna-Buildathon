@@ -1,0 +1,4 @@
+# Hyperframes render cache & local render logs — not source
+composition/.hyperframes/
+composition/node_modules/
+render.log
