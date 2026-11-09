@@ -11,3 +11,6 @@ venv/
 # os
 .DS_Store
 Thumbs.db
+
+# raw demo recordings (heavy source footage; kept local, not in the repo)
+kural/Video-Demo/

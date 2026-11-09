@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-resolution="landscape">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Noto+Sans+Tamil:wght@500;700;800&display=swap" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js"></script>
+    <style>
+      :root {
+        --beige-0: #f4ead7; --beige-1: #ecdfc8; --beige-2: #e3d3b6;
+        --copper: #b87333; --copper-d: #8c5424; --copper-l: #d89a63; --copper-x: #e9b685;
+        --ink: #3a2c1c; --muted: #6e5c43; --rust: #b4430f; --sage-d: #2f5a33;
+        --glass: rgba(255,250,240,0.6); --glass-line: rgba(140,84,36,0.22);
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1920px; height: 1080px; overflow: hidden;
+        font-family: "Inter","Noto Sans Tamil",system-ui,sans-serif; color: var(--ink); }
+      #root { position: relative; width: 1920px; height: 1080px; overflow: hidden;
+        background:
+          radial-gradient(1200px 800px at 26% 18%, rgba(233,182,133,0.45), rgba(233,182,133,0) 60%),
+          radial-gradient(1000px 900px at 84% 88%, rgba(184,115,51,0.15), rgba(184,115,51,0) 55%),
+          linear-gradient(140deg, var(--beige-0), var(--beige-1) 55%, var(--beige-2)); }
+      .tamil { font-family: "Noto Sans Tamil","Inter",sans-serif; }
+
+      #grain { position: absolute; inset: 0; pointer-events: none; z-index: 60; opacity: 0.07;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+        animation: grain 0.5s steps(1) infinite; }
+      @keyframes grain { 0%,100%{transform:translate(0,0)} 25%{transform:translate(-6px,4px)} 50%{transform:translate(5px,-5px)} 75%{transform:translate(-3px,-6px)} }
+
+      /* Title */
+      #title { position: absolute; top: 96px; left: 0; right: 0; text-align: center; }
+      #title .badge { width: 72px; height: 72px; border-radius: 20px; display: inline-grid; place-items: center; vertical-align: middle;
+        background: radial-gradient(circle at 35% 30%, var(--copper), var(--copper-d) 75%); box-shadow: 0 12px 30px rgba(140,84,36,0.4); }
+      #title .badge span { color: #fff6ea; font-weight: 800; font-size: 40px; }
+      #title h1 { display: inline-block; vertical-align: middle; margin-left: 20px; font-size: 62px; font-weight: 900; letter-spacing: -1px; color: var(--ink); }
+      #title h1 .c { color: var(--copper-d); }
+      #title .sub { margin-top: 14px; font-size: 30px; font-weight: 700; color: var(--muted); }
+
+      /* Pipeline */
+      #pipe { position: absolute; top: 432px; left: 140px; width: 1640px; }
+      .line-bg { position: absolute; left: 85px; right: 85px; top: 43px; height: 5px; border-radius: 3px; background: rgba(140,84,36,0.18); }
+      .line-fg { position: absolute; left: 85px; top: 43px; height: 5px; width: 1470px; border-radius: 3px;
+        background: linear-gradient(90deg, var(--copper-l), var(--copper-d)); transform: scaleX(0); transform-origin: left center; }
+      .row { position: relative; display: flex; justify-content: space-between; }
+      .node { width: 170px; display: flex; flex-direction: column; align-items: center; }
+      .circle { width: 92px; height: 92px; border-radius: 50%; background: #fff8ef; border: 3px solid rgba(140,84,36,0.25);
+        display: grid; place-items: center; font-size: 42px; box-shadow: 0 10px 24px rgba(140,84,36,0.12); }
+      .nlabel { margin-top: 18px; font-size: 28px; font-weight: 800; color: var(--ink); text-align: center; white-space: nowrap; }
+
+      /* Caption */
+      #caps { position: absolute; top: 648px; left: 0; right: 0; height: 160px; }
+      .cap { position: absolute; left: 50%; top: 0; transform: translateX(-50%); width: 1200px; text-align: center;
+        font-size: 36px; font-weight: 700; color: var(--ink); line-height: 1.35; }
+      .cap b { color: var(--copper-d); }
+      .cap .r { color: var(--rust); }
+
+      /* Payoff */
+      #payoff { position: absolute; inset: 0; display: grid; place-items: center; z-index: 40; }
+      #payoff .badge { width: 120px; height: 120px; border-radius: 30px; display: grid; place-items: center; margin: 0 auto 26px;
+        background: radial-gradient(circle at 35% 30%, var(--copper), var(--copper-d) 75%); box-shadow: 0 22px 54px rgba(140,84,36,0.45); }
+      #payoff .badge span { color: #fff6ea; font-weight: 800; font-size: 68px; }
+      #payoff h2 { font-size: 66px; font-weight: 900; letter-spacing: -1px; color: var(--ink); }
+      #payoff h2 .c { color: var(--copper-d); }
+      #payoff .brand { margin-top: 18px; font-size: 34px; font-weight: 800; color: var(--muted); }
+      .center { text-align: center; }
+    </style>
+  </head>
+  <body>
+    <div id="root" class="clip" data-composition-id="root" data-width="1920" data-height="1080" data-start="0" data-duration="23">
+      <audio id="bed" data-start="0" data-duration="23" data-media-start="2.4" data-volume="0.5" data-fade-in="0.6" data-fade-out="1.8"
+        src="assets/music/happy-beats-business-moves-vol-1-by-ende-dot-app.mp3"></audio>
+
+      <!-- Title -->
+      <div id="title">
+        <span class="badge"><span class="tamil">கு</span></span>
+        <h1>How <span class="c">Kural</span> works</h1>
+        <div class="sub tamil">ஒரு அழைப்பு — ஆறு படிகள்.</div>
+      </div>
+
+      <!-- Pipeline -->
+      <div id="pipe">
+        <div class="line-bg"></div>
+        <div id="lfg" class="line-fg"></div>
+        <div class="row">
+          <div class="node" id="n1"><div class="circle">📞</div><div class="nlabel">Call</div></div>
+          <div class="node" id="n2"><div class="circle">👂</div><div class="nlabel">Understand</div></div>
+          <div class="node" id="n3"><div class="circle">🧭</div><div class="nlabel">Route</div></div>
+          <div class="node" id="n4"><div class="circle">⚡</div><div class="nlabel">Check</div></div>
+          <div class="node" id="n5"><div class="circle">🎫</div><div class="nlabel">File</div></div>
+          <div class="node" id="n6"><div class="circle">✅</div><div class="nlabel">Self-eval</div></div>
+        </div>
+      </div>
+
+      <!-- Captions -->
+      <div id="caps">
+        <div class="cap" id="cap1">A citizen calls one number and speaks — <b>Tamil, English, or both.</b></div>
+        <div class="cap" id="cap2">Speech-to-text and an LLM <b>understand the complaint.</b></div>
+        <div class="cap" id="cap3">The brain resolves the <b>exact government office</b> that owns it.</div>
+        <div class="cap" id="cap4">It computes the bill and flags any <span class="r">over-charge</span>.</div>
+        <div class="cap" id="cap5">An <b>SLA-tracked ticket</b> is filed and an SMS is sent.</div>
+        <div class="cap" id="cap6"><b>KuralEval</b> scores the call quality — in Tamil.</div>
+      </div>
+
+      <!-- Payoff -->
+      <div id="payoff">
+        <div class="center">
+          <div class="badge"><span class="tamil">கு</span></div>
+          <h2>One call. The right office.</h2>
+          <div class="brand"><span style="color:var(--copper-d)">Kural</span> · <span class="tamil">குரல்</span> — automatically.</div>
+        </div>
+      </div>
+
+      <div id="grain"></div>
+
+      <script>
+        const tl = gsap.timeline({ paused: true });
+
+        // frame-0: title present so the thumbnail isn't empty
+        gsap.set("#title", { opacity: 1 });
+        gsap.set("#title .badge", { scale: 0.9 });
+        gsap.set(["#pipe", "#caps"], { opacity: 0 });
+        gsap.set("#lfg", { scaleX: 0 });
+        gsap.set([".cap"], { opacity: 0, y: 14 });
+        gsap.set("#payoff", { opacity: 0 });
+        gsap.set("#payoff .badge", { scale: 0.85 });
+        for (let i = 1; i <= 6; i++) gsap.set("#n" + i, { opacity: 0.45 });
+
+        // Intro (0 - 2.6)
+        tl.to("#title .badge", { scale: 1, duration: 0.7, ease: "back.out(1.6)" }, 0.1);
+        tl.to("#pipe", { opacity: 1, duration: 0.6, ease: "power2.out" }, 1.6);
+        tl.to("#caps", { opacity: 1, duration: 0.4 }, 2.2);
+
+        // Step helper: activate node i, advance the line, show caption i
+        const steps = [
+          { t: 2.9, i: 1 }, { t: 5.2, i: 2 }, { t: 7.5, i: 3 },
+          { t: 9.8, i: 4 }, { t: 12.1, i: 5 }, { t: 14.4, i: 6 },
+        ];
+        steps.forEach(({ t, i }, idx) => {
+          const node = "#n" + i, cap = "#cap" + i;
+          const circle = node + " .circle", label = node + " .nlabel";
+          tl.to(node, { opacity: 1, duration: 0.3 }, t);
+          tl.fromTo(circle, { scale: 1 }, { scale: 1.18, duration: 0.3, ease: "back.out(2.2)" }, t); // beat-grid
+          tl.to(circle, { scale: 1.06, borderColor: "#8c5424", boxShadow: "0 14px 30px rgba(140,84,36,0.3)", duration: 0.35 }, t + 0.3);
+          tl.to(label, { color: "#8c5424", duration: 0.3 }, t);
+          tl.to("#lfg", { scaleX: idx / 5, duration: 0.6, ease: "power1.inOut" }, t);
+          tl.to(cap, { opacity: 1, y: 0, duration: 0.45, ease: "power2.out" }, t + 0.1);
+          if (idx < steps.length - 1) tl.to(cap, { opacity: 0, y: -12, duration: 0.35, ease: "power1.in" }, t + 2.0);
+        });
+        tl.to("#lfg", { scaleX: 1, duration: 0.5, ease: "power1.inOut" }, 14.8); // fill to end
+
+        // Hold the full pipeline, then hand to payoff
+        tl.to("#cap6", { opacity: 0, duration: 0.4 }, 17.4);
+        tl.to(["#title", "#pipe", "#caps"], { opacity: 0, duration: 0.6, ease: "power1.inOut" }, 17.8);
+        tl.to("#payoff", { opacity: 1, duration: 0.5 }, 18.3);
+        tl.to("#payoff .badge", { scale: 1, duration: 0.7, ease: "back.out(1.6)" }, 18.4); // beat-locked
+        // hold the payoff to the end
+
+        window.__timelines = window.__timelines || {};
+        window.__timelines["root"] = tl;
+      </script>
+    </div>
+  </body>
+</html>

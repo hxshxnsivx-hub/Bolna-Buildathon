@@ -1,4 +1,8 @@
-# Hyperframes render cache & local render logs — not source
-composition/.hyperframes/
-composition/node_modules/
+# Hyperframes render cache, deps, and local render logs — not source
+**/.hyperframes/
+**/node_modules/
+**/render.log
 render.log
+# raw demo footage & intermediate capture (heavy; the film uses call_audio.mp3 + stills instead)
+demo/composition/assets/video/
+**/cap-dash/

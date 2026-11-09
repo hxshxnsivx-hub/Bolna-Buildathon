@@ -1,47 +1,88 @@
-# Kural — Pitch & Demo-Video Script
+# Kural — Pitch Playbook
 
-**Video name:** **"Kural — One Voice Call. The Right Department."**
-*(alt: "குரல் · Kural — The Voice That Routes Tamil Nadu")*
-
-**One-line UVP:**
-> **Kural is the autonomous Tamil–English voice front door for civic grievances — a citizen just *speaks*, and the right government department's door opens, every time.**
+Everything you need to pitch Kural like a pro: the one-liner, the method you follow,
+the full script in plain words, how to deliver it, and the one hard question answered.
 
 ---
 
-## The 2.5-minute demo-video script
+## 1. Say it in one line
 
-**① Hook (0:00–0:15)**
-> In Tamil Nadu, a citizen with a problem — no water, a wrong electricity bill, a dark streetlight — first has to know *which of five different agencies* owns it, find the right helpline, and fight an app in English. Most don't. So the complaint is never filed. We fixed that with **one phone call.**
+> **Kural lets any citizen in Tamil Nadu call one number, speak in their own language, and get their civic complaint sent to the right office and tracked — automatically.**
 
-**② Problem (0:15–0:45)**
-> Civic services here are split across the Corporation, Metro Water, TANGEDCO, TWAD, Highways — separate silos, separate numbers, soft manual SLAs. The state's own grievance system is web, app and a *human* call centre — English- and Hindi-first. For the rural, elderly, low-literacy citizen who only makes phone calls, there is **no autonomous voice front door.** We read the government's own tender — **no AI voicebot exists.**
-
-**③ Solution & workflow (0:45–1:25)**
-> **Kural is an autonomous Tamil + English — "Tanglish" — voice agent.** A citizen calls one number and just talks, the way they actually talk. Kural listens, **confirms it back in their language**, and behind the scenes a deterministic *brain* does the hard part: it **identifies the sector, resolves the exact owning body and department for that city and tier**, computes anything like a bill over-charge, **files an SLA-tracked ticket**, texts the citizen their number, and shows it live on a dashboard — then **scores its own call quality** so the agent keeps getting better.
-
-**④ Live moment (1:25–1:55)**
-> *[play the call]* "Kuniyamuthur, Coimbatore — 200 units use pannen, aana bill 2000 vandhuchu."
-> Kural confirms it, routes it to **TNPDCL**, computes a **₹1,765 over-charge**, flags it for **CGRF escalation**, and it lands on the dashboard — over a live map of Tamil Nadu's **37 districts.**
-
-**⑤ Novelty / why it's defensible (1:55–2:15)**
-> What makes Kural unique is the *combination* no one else has: **autonomous code-mixed vernacular voice intake + cross-agency ownership resolution + an offline-first vernacular call-quality eval.** The state's own system has none of these. Kural is the voice front door the government is missing — and a QA layer that works in Tamil, which no English-first eval vendor offers.
-
-**⑥ Timing & market (2:15–2:35)**
-> And the timing is exact. Tamil Nadu's **2026-27 budget funds agentic AI and speech-to-text *in governance*, with ~₹400 crore (₹398 cr) to the AI, IT & Digital Services department.** The state's AI mission is already **in talks with Sarvam** for Tamil AI. Kural isn't a hypothetical — it's a **ready-made pilot for the state's own funded roadmap.**
-
-**⑦ Close (2:35–2:45)**
-> Built on **Bolna, Plivo, Sarvam, Cartesia** — deployed, callable, tested, with a working eval layer. Kural gives every Tamil citizen **one voice — and the right door opens.** *குரல் — the people's voice.*
+**The 30-second version (for a lift, a chat, a form):**
+> People in Tamil Nadu struggle to complain about basic things — no water, a wrong power bill — because they have to know which of five offices owns it and use an app in English. Kural fixes that. You call one number and just talk, in Tamil or English or both. Our voice agent understands you, sends it to the exact right office, raises a tracked ticket, and even checks its own call quality in Tamil. The state is spending ₹398 crore to build this kind of thing — we already have it working.
 
 ---
 
-## The three "brag" lines (use anywhere)
+## 2. The method — how a good pitch is built
 
-1. **Novelty:** "The only system doing *autonomous Tanglish voice intake + cross-agency routing + vernacular call-QA* — a combination the state's own IIPGCMS doesn't have."
-2. **Traction/demand:** "Lands inside a **₹398-crore, state-funded** 2026-27 priority (agentic + speech AI in governance), with the government already talking to our own stack vendor, Sarvam."
-3. **Proof:** "Not a slide — a **deployed, callable** voice agent that files real, correctly-routed tickets across all 31 civic sectors, with a live 37-district dashboard and a working self-eval layer. 26 passing tests."
+A strong pitch is six short beats. Keep each one tight. Don't skip ahead.
 
-## References (grounding)
-- No autonomous AI voicebot in the state system → TNeGA **IIPGCMS RfP** (dossier `docs/research/02`).
-- Cross-agency ownership problem + full civic-services tree → dossiers `01`, `04`.
-- **₹398 crore** to AI/IT/Digital Services + agentic & speech-to-text AI in the **TN 2026-27 budget**; TN AI Mission; **talks with Sarvam** → dossier `03` (Deccan Chronicle, The News Minute, DTNext).
-- Fit with Bolna (vernacular, "next billion", their eval-focused hiring) → dossier `05`.
+| Beat | Job | Time | The question it answers |
+|---|---|---|---|
+| **1. Hook** | Make them lean in | ~10s | "Why should I care?" |
+| **2. Problem** | Make the pain real | ~20s | "Who hurts, and why isn't it solved?" |
+| **3. Why now** | Show the timing | ~10s | "Why does this matter *today*?" |
+| **4. Solution** | What you built, in one breath | ~20s | "What is it, simply?" |
+| **5. Proof** | Show it working | ~30s | "Does it actually work?" |
+| **6. Why us + ask** | Your edge, then close | ~15s | "Why you, and what now?" |
+
+**The golden rules**
+- **One idea per sentence.** If you need a comma-and, split it.
+- **Show, don't tell.** The demo does more than any adjective.
+- **Numbers beat adjectives.** "₹1,765 overcharge, flagged" > "powerful billing analysis."
+- **Be honest about rivals.** It builds trust and disarms the hardest question.
+- **End clean and stop.** Land the last line. Don't trail off into "yeah, so… that's it."
+
+---
+
+## 3. The full script (~90 seconds, plain words)
+
+**① Hook**
+> Picture someone's grandmother in a village. Her street's water has been off for three days. To complain today, she has to know which of five different offices owns the problem, find the right number, and use an app in English. So she doesn't complain. And it never gets fixed.
+
+**② Problem**
+> This happens across Tamil Nadu every day. The complaint systems do exist — but they're built for people who read English and can work an app. For everyone else, there's no easy way in. The most common thing a person can do — make a phone call and talk — isn't an option.
+
+**③ Why now**
+> And the state knows it. Tamil Nadu is putting ₹398 crore into AI in government, and is already paying for a voice bot for its helpline. The money and the intent are there. What's missing is a real, working example of how it should actually work.
+
+**④ Solution**
+> That's Kural. You call one number and you just talk — in Tamil, English, or a mix, the way people really speak. Kural understands you, works out the exact office that should handle it, raises a ticket with a deadline, texts you the number, and follows up. One call. No app. No English. No queue.
+
+**⑤ Proof — run the demo here**
+> Let me show you. *(play the video / live call)* A man in Coimbatore says his power bill is wrong — 200 units, but a ₹2,000 bill. Kural hears him, sends it to the electricity board, works out he's been overcharged by ₹1,765, flags it for appeal, and files the ticket. And here it is on the live dashboard — every complaint, routed to the right office, tracked to a deadline, with repeat complaints grouped into a hotspot.
+
+**⑥ Why us + ask**
+> Now — others are building in this space, even the government. Our edge is three things. **One**, we don't just pick a department — we find the exact office that owns it. **Two**, Kural grades its own calls *in Tamil* — something the English-first tools don't do, and something that matters a lot to a voice company like Bolna. **Three**, this isn't a plan or an announcement. It works today — you just watched it.
+>
+> Kural is one phone call away from giving every citizen a voice. That's what we built. Thank you.
+
+---
+
+## 4. How to deliver it like a pro
+
+- **Slow down.** Nerves make you rush. Speak slower than feels natural — it reads as confidence.
+- **Pause after the hook.** Let the grandmother line land for a full second before you go on.
+- **Let the demo breathe.** Stop talking while it plays. Point once, then be quiet.
+- **Stand still, hands open.** No pacing, no fidgeting. Stillness looks senior.
+- **Use their words back.** If it's Bolna, say "voice agent" and "eval" — their vocabulary.
+- **Land the last line and stop.** Say "Thank you," and hold eye contact. Silence is strong.
+
+---
+
+## 5. The one hard question — answered
+
+**"Isn't the government / someone already doing this?"**
+> Yes — and honestly, that's the best validation we could get. The state has *announced* a helpline voice bot; Chennai has *announced* an AI grievance platform. We've *built* one. And we added the parts nobody else has: routing to the exact owning office, and a Tamil-language call-quality check. Announced versus working — that's the difference, and you just saw ours work.
+
+**"What's genuinely new, then?"**
+> Not the idea of a voice bot — those exist. What's new is the *combination* for a context everyone skips: autonomous Tamil-English voice, office-level routing, and a vernacular quality layer the English-first eval market doesn't offer.
+
+---
+
+## 6. The three lines to remember (if you forget everything else)
+
+1. **"One call. The right office. Automatically."**
+2. **"We built what the state is spending ₹398 crore to figure out."**
+3. **"It grades its own calls in Tamil — nobody else does that."**
